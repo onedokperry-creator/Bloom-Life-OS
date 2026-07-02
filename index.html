@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloom OS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="bloom-os" aria-label="Bloom OS">
+      <header class="topbar">
+        <div class="brand">
+          <img class="app-icon" src="assets/icons/icon/chat/chat_ai.png" alt="" />
+          <div>
+            <strong>Bloom OS</strong>
+            <small>Life Operating System</small>
+          </div>
+        </div>
+        <div class="top-status">
+          <span>Lv.23</span>
+          <span>20:51</span>
+        </div>
+      </header>
+
+      <section class="desktop">
+        <section class="window ai-entry">
+          <div class="window-title">
+            <span>Bloom Chat</span>
+            <i></i>
+          </div>
+          <div class="ai-body">
+            <div class="rabbit-line">
+              <img class="rabbit-face" src="assets/icons/icon/rabbit/rabbit_happy.png" alt="White rabbit" />
+              <p>まずここに話しかけてね。Bloomが必要なフォルダへ整理するよ。</p>
+            </div>
+            <div class="chat-log" id="chatLog" aria-live="polite">
+              <div class="message assistant">
+                <span>Bloom</span>
+                <p>今日のことをそのまま書いて大丈夫。Mood、Journal、Plans、Spending、Memories、Growthへまとめて整理するね。</p>
+              </div>
+            </div>
+            <div class="quick-row">
+              <button data-prompt="今日は仕事で褒められた！お昼は1200円使った。夜はダンス。ちょっと疲れたけど楽しかった😊">Daily example</button>
+              <button data-prompt="明日美容院を予約した。少し楽しみ。">Plans</button>
+              <button data-prompt="カフェで900円使った。ゆっくりできて嬉しかった。">Spending</button>
+            </div>
+            <label class="input-box">
+              <span>Talk to Bloom</span>
+              <textarea id="bloomInput" rows="5" placeholder="例: 今日は仕事で褒められた！お昼は1200円使った。夜はダンス。ちょっと疲れたけど楽しかった😊"></textarea>
+            </label>
+            <button class="primary-action" id="organizeButton">Organize</button>
+          </div>
+        </section>
+
+        <section class="confirm-panel" id="confirmPanel" hidden>
+          <div class="window-title">
+            <span>Save Preview</span>
+            <i></i>
+          </div>
+          <div class="confirm-body">
+            <h2>Bloomがこの内容で整理したよ</h2>
+            <div class="save-preview" id="savePreview"></div>
+            <p>保存すると、該当フォルダとホームのウィジェットへ反映されます。</p>
+            <div class="confirm-actions">
+              <button class="secondary-action" id="editDraft">Edit</button>
+              <button class="primary-action" id="saveDraft">Save</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="folder-grid" aria-label="Bloom OS folders">
+          <button class="folder-card" data-folder="goals">
+            <img class="folder-icon" src="assets/icons/icon/navigation/nav_goal.png" alt="" />
+            <strong>Goals</strong>
+            <small>目標とミッション</small>
+          </button>
+          <button class="folder-card" data-folder="money">
+            <img class="folder-icon" src="assets/icons/icon/navigation/nav_money.png" alt="" />
+            <strong>Money</strong>
+            <small>家計とごほうび貯金</small>
+          </button>
+          <button class="folder-card" data-folder="calendar">
+            <img class="folder-icon" src="assets/icons/icon/navigation/nav_calendar.png" alt="" />
+            <strong>Calendar</strong>
+            <small>ライフカレンダー</small>
+          </button>
+          <button class="folder-card" data-folder="vision">
+            <img class="folder-icon" src="assets/icons/icon/navigation/nav_vision.png" alt="" />
+            <strong>Vision</strong>
+            <small>理想の景色</small>
+          </button>
+          <button class="folder-card" data-folder="memories">
+            <img class="folder-icon" src="assets/icons/icon/navigation/nav_diary.png" alt="" />
+            <strong>Memories</strong>
+            <small>日記と思い出</small>
+          </button>
+          <button class="folder-card" data-folder="growth">
+            <img class="folder-icon" src="assets/icons/icon/goal/goal_trophy.png" alt="" />
+            <strong>Growth</strong>
+            <small>EXPとふりかえり</small>
+          </button>
+        </section>
+
+        <section class="widget-grid">
+          <article class="widget">
+            <h2>Plans</h2>
+            <ul class="mini-list" id="todayPlans">
+              <li><time>18:00</time><span>ダンス</span></li>
+            </ul>
+          </article>
+          <article class="widget">
+            <h2>Mood</h2>
+            <div class="mood-widget">
+              <span id="moodFace">😊</span>
+              <p id="moodText">嬉しい。少し疲れたけど楽しかった。</p>
+            </div>
+          </article>
+          <article class="widget">
+            <h2>Growth</h2>
+            <div class="level-row">
+              <strong>Lv.23</strong>
+              <span id="expText">EXP 2350 / 3000</span>
+            </div>
+            <div class="progress"><span id="expBar" style="width: 78%"></span></div>
+          </article>
+          <article class="widget">
+            <h2>Reward Savings</h2>
+            <div class="piggy-row">
+              <img class="pixel-piggy" src="assets/icons/icon/money/money_reward.png" alt="" />
+              <div>
+                <strong id="rewardSaving">32,600円</strong>
+                <small>/ 50,000円</small>
+              </div>
+            </div>
+            <div class="progress mint"><span id="savingBar" style="width: 65%"></span></div>
+          </article>
+          <article class="widget">
+            <h2>Missions</h2>
+            <label class="mission"><input type="checkbox" checked /> 水を3杯飲む</label>
+            <label class="mission"><input type="checkbox" /> 5分だけ整える</label>
+          </article>
+          <article class="widget">
+            <h2>Memories</h2>
+            <p id="latestMemory">仕事で褒められた。ダンスが楽しかった。</p>
+          </article>
+        </section>
+
+        <section class="folder-window" id="folderWindow" hidden>
+          <div class="window-title">
+            <span id="folderTitle">Folder</span>
+            <button id="closeFolder" aria-label="Close">×</button>
+          </div>
+          <div class="folder-content" id="folderContent"></div>
+        </section>
+      </section>
+
+      <footer class="taskbar">
+        <button class="start-button" id="homeButton">
+          <img class="app-icon small" src="assets/icons/icon/chat/chat_ai.png" alt="" />
+          Bloom
+        </button>
+        <span>One input. Bloom OS organizes the rest.</span>
+      </footer>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
