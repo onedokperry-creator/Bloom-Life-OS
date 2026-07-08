@@ -1554,6 +1554,257 @@ input[type="checkbox"] {
   font-weight: 900;
 }
 
+@media (max-width: 429px) {
+  body {
+    font-size: 14px;
+  }
+
+  .bloom-os {
+    width: 100%;
+    border-inline: 0;
+  }
+
+  .topbar {
+    min-height: 56px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 10px;
+    padding: 8px 12px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .brand strong {
+    font-size: 18px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .brand .app-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .top-status {
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .top-status span:first-child {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-status span:nth-child(3) {
+    display: none;
+  }
+
+  .text-button {
+    font-size: 11px;
+  }
+
+  .desktop {
+    padding: 10px 10px calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .window,
+  .confirm-panel,
+  .folder-window,
+  .widget,
+  .folder-card {
+    border-radius: 18px;
+    box-shadow: 0 12px 28px rgba(86, 93, 142, 0.13);
+  }
+
+  .window-title {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 17px;
+  }
+
+  .window-title i {
+    width: 40px;
+    background-size: 12px 12px, 12px 12px, 12px 12px;
+  }
+
+  .ai-entry {
+    margin-bottom: 10px;
+  }
+
+  .ai-body,
+  .confirm-body {
+    padding: 12px;
+  }
+
+  .rabbit-line {
+    gap: 10px;
+    padding: 10px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .rabbit-face {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .chat-log {
+    max-height: 170px;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .message {
+    max-width: 100%;
+    padding: 9px 10px;
+    border-radius: 15px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .quick-row {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .quick-row button,
+  .secondary-action {
+    padding: 7px 11px;
+    font-size: 11px;
+  }
+
+  .input-box {
+    gap: 6px;
+    font-size: 15px;
+  }
+
+  .input-box textarea {
+    min-height: 104px;
+    border-radius: 16px;
+    padding: 10px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .primary-action {
+    min-height: 42px;
+    margin-top: 8px;
+    border-radius: 15px;
+  }
+
+  .folder-grid {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .folder-card {
+    min-height: 102px;
+    gap: 4px;
+    padding: 12px 8px;
+  }
+
+  .folder-card strong {
+    font-size: 15px;
+  }
+
+  .folder-card small {
+    font-size: 11px;
+  }
+
+  .folder-icon {
+    width: 32px;
+    height: 28px;
+  }
+
+  .widget-grid {
+    gap: 9px;
+  }
+
+  .widget {
+    padding: 12px;
+  }
+
+  .widget h2 {
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .mini-list {
+    gap: 6px;
+  }
+
+  .mini-list li {
+    grid-template-columns: 48px 1fr;
+    gap: 8px;
+  }
+
+  .mood-widget {
+    grid-template-columns: 38px 1fr;
+    gap: 9px;
+  }
+
+  .mood-widget span {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+    font-size: 20px;
+  }
+
+  .mood-widget p,
+  .widget p {
+    line-height: 1.55;
+  }
+
+  .level-row strong {
+    font-size: 22px;
+  }
+
+  .piggy-row {
+    gap: 9px;
+  }
+
+  .pixel-piggy {
+    width: 56px;
+    min-width: 56px;
+    height: 46px;
+  }
+
+  .piggy-row strong {
+    font-size: 22px;
+  }
+
+  .mission {
+    margin-top: 7px;
+  }
+
+  .taskbar {
+    min-height: 58px;
+    gap: 8px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .taskbar span {
+    line-height: 1.35;
+  }
+
+  .start-button {
+    padding: 6px 9px;
+  }
+}
+
 @media (min-width: 430px) {
   .widget-grid {
     grid-template-columns: 1fr 1fr;
