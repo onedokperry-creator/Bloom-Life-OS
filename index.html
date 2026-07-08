@@ -7,7 +7,36 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="bloom-os" aria-label="Bloom OS">
+    <section class="auth-screen" id="authScreen" aria-label="Bloom OS login">
+      <div class="auth-window window">
+        <div class="window-title">
+          <span>Bloom Login</span>
+          <i></i>
+        </div>
+        <div class="auth-body">
+          <img class="rabbit-face auth-rabbit" src="assets/icons/icon/rabbit/rabbit_happy.png" alt="White rabbit" />
+          <h1>Bloom OS</h1>
+          <p>ログインすると、Bloom OSのデスクトップと保存データをあなた専用に表示します。</p>
+          <form class="auth-form" id="authForm">
+            <label>
+              <span>Email</span>
+              <input id="authEmail" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" />
+            </label>
+            <div class="auth-actions">
+              <button class="primary-action" type="submit">Login</button>
+              <button class="secondary-action" id="signupButton" type="button">Sign up</button>
+            </div>
+          </form>
+          <p class="auth-message" id="authMessage" role="status"></p>
+        </div>
+      </div>
+    </section>
+
+    <main class="bloom-os" id="appShell" aria-label="Bloom OS" hidden>
       <header class="topbar">
         <div class="brand">
           <img class="app-icon" src="assets/icons/icon/chat/chat_ai.png" alt="" />
@@ -17,8 +46,10 @@
           </div>
         </div>
         <div class="top-status">
+          <span id="userEmail">Signed in</span>
           <span>Lv.23</span>
           <span>20:51</span>
+          <button class="text-button" id="logoutButton" type="button">Logout</button>
         </div>
       </header>
 
@@ -163,6 +194,6 @@
       </footer>
     </main>
 
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>
