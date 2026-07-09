@@ -453,7 +453,7 @@ export async function saveBloomDraft({ userId, draft }) {
         draft.plans.map((plan) => ({
         user_id: userId,
           title: plan.title,
-          starts_at: planStartIso({ dateLabel: plan.date, time: plan.time ?? "09:00" }),
+          starts_at: planStartIso({ dateLabel: plan.date, dateValue: plan.dateValue, time: plan.time ?? "09:00" }),
         kind: "personal",
         source_app: "bloom_os",
         }))

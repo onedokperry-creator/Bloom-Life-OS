@@ -507,37 +507,60 @@ function addMessage(role, text) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function amountFromText(text) {
-  const match = text.match(/([0-9０-９,，]+)\s*円/);
-  if (!match) return null;
-  const value = match[1]
-    .replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 65248))
-    .replace(/[，,]/g, "");
-  return Number(value);
+function normalizeDigits(value) {
+  return String(value ?? "").replace(/[\uFF10-\uFF19]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 65248));
 }
 
-function normalizeDigits(value) {
-  return value.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 65248));
+function hasAny(text, words) {
+  return words.some((word) => text.includes(word));
+}
+
+function amountFromText(text) {
+  const normalized = normalizeDigits(text).replace(/[\uFF0C,]/g, "");
+  const match = normalized.match(new RegExp("(?:\\u00a5\\s*)?([0-9]{2,7})\\s*(?:\\u5186|yen|YEN)"));
+  return match ? Number(match[1]) : null;
 }
 
 function timeFromText(text) {
   const normalized = normalizeDigits(text);
-  const match = normalized.match(/([01]?\d|2[0-3])\s*(?:[:：時])\s*([0-5]\d)?\s*(?:から|開始|スタート)?/);
+  const timePattern = new RegExp("(\\u5348\\u524d|\\u5348\\u5f8c|\\u671d|\\u663c|\\u5915\\u65b9|\\u591c)?\\s*([0-2]?\\d)\\s*(?:\\u6642|:|\\uff1a)\\s*([0-5]\\d)?\\s*(?:\\u304b\\u3089|\\u301c|~|\\u958b\\u59cb|\\u30b9\\u30bf\\u30fc\\u30c8)?");
+  const match = normalized.match(timePattern);
   if (!match) return null;
 
-  const hour = String(Number(match[1])).padStart(2, "0");
-  const minute = match[2] ? String(Number(match[2])).padStart(2, "0") : "00";
-  return `${hour}:${minute}`;
+  let hour = Number(match[2]);
+  const minute = match[3] ? Number(match[3]) : 0;
+  const hint = match[1] ?? "";
+
+  if ((hint === "\u5348\u5f8c" || hint === "\u591c" || hint === "\u5915\u65b9") && hour < 12) hour += 12;
+  if (hint === "\u671d" && hour === 12) hour = 0;
+
+  return String(Math.min(hour, 23)).padStart(2, "0") + ":" + String(minute).padStart(2, "0");
 }
 
-function dateLabelFromText(text) {
-  if (/明日|あした|翌日/.test(text)) return "tomorrow";
-  if (/今日|本日|きょう/.test(text)) return "today";
-  return "today";
+function dateInfoFromText(text) {
+  const normalized = normalizeDigits(text);
+  if (hasAny(normalized, ["\u660e\u5f8c\u65e5", "\u3042\u3055\u3063\u3066"])) {
+    const date = new Date();
+    date.setDate(date.getDate() + 2);
+    return { label: "upcoming", value: dateInputValueFromDate(date), readable: "\u660e\u5f8c\u65e5" };
+  }
+  if (hasAny(normalized, ["\u660e\u65e5", "\u3042\u3057\u305f"])) return { label: "tomorrow", value: "", readable: "\u660e\u65e5" };
+  if (hasAny(normalized, ["\u4eca\u65e5", "\u672c\u65e5"])) return { label: "today", value: "", readable: "\u4eca\u65e5" };
+
+  const monthDay = normalized.match(new RegExp("([0-9]{1,2})\\u6708([0-9]{1,2})\\u65e5"));
+  if (monthDay) {
+    const date = new Date();
+    date.setMonth(Number(monthDay[1]) - 1, Number(monthDay[2]));
+    return { label: "upcoming", value: dateInputValueFromDate(date), readable: Number(monthDay[1]) + "/" + Number(monthDay[2]) };
+  }
+
+  return { label: "today", value: "", readable: "\u4eca\u65e5" };
 }
 
 function readableDateLabel(value) {
-  return value === "tomorrow" ? "明日" : "今日";
+  if (value === "tomorrow") return "\u660e\u65e5";
+  if (value === "upcoming") return "\u4e88\u5b9a";
+  return "\u4eca\u65e5";
 }
 
 function shortDateLabel(value) {
@@ -635,92 +658,143 @@ async function loadVisionBoards(userId = currentUser?.id) {
   }
 }
 
-function titleFromPlanText(text, { hasDance }) {
-  if (/勉強|学習|英語|読書|資格|宿題/.test(text)) return "勉強";
-  if (hasDance || /ダンス|ベリーダンス|踊|ハフラ|レッスン|リハ|発表会|シルクロード/.test(text)) return "ダンス";
-  if (/ランチ|昼ごはん|昼食|友達|友人|会う|ごはん|食事/.test(text)) return /友達|友人/.test(text) ? "友達とランチ" : "ランチ";
-  if (/カフェ|スタバ|コーヒー|ラテ|フラペチーノ/.test(text)) return "カフェ";
-  if (/美容院|病院|予約|予定/.test(text)) return text.replace(/^(今日|明日|あした|本日|夜|朝|昼|夕方|午前|午後)?/, "").slice(0, 18) || "予定";
-  return "";
-}
-
-function extractPlans(text, { hasDance }) {
-  const chunks = text
-    .split(/[、。．.!！?？\n]+/)
+function splitJournalText(text) {
+  const dateWords = "(?:\\u4eca\\u65e5|\\u672c\\u65e5|\\u660e\\u65e5|\\u3042\\u3057\\u305f|\\u660e\\u5f8c\\u65e5|\\u3042\\u3055\\u3063\\u3066|[0-9]{1,2}\\u6708[0-9]{1,2}\\u65e5)";
+  return normalizeDigits(text)
+    .replace(new RegExp("\\u3001\\s*(?=" + dateWords + ")", "g"), "\u3002")
+    .split(/[\u3002.!\uff01?\uff1f\n]+/)
     .map((chunk) => chunk.trim())
     .filter(Boolean);
+}
+
+function spendingTitleFromText(text) {
+  if (hasAny(text, ["\u30e9\u30f3\u30c1", "\u663c\u3054\u306f\u3093", "\u663c\u98df", "\u304a\u663c"])) return "\u30e9\u30f3\u30c1";
+  if (hasAny(text, ["\u30ab\u30d5\u30a7", "\u30b9\u30bf\u30d0", "\u30b3\u30fc\u30d2\u30fc", "\u304a\u8336", "\u30d5\u30e9\u30da\u30c1\u30fc\u30ce"])) return "\u30ab\u30d5\u30a7";
+  const categories = ["\u7f8e\u5bb9\u9662", "\u75c5\u9662", "\u4ea4\u901a", "\u96fb\u8eca", "\u670d", "\u30b3\u30b9\u30e1", "\u672c"];
+  return categories.find((category) => text.includes(category)) ?? "\u652f\u51fa";
+}
+
+function cleanPlanTitle(chunk) {
+  const normalized = normalizeDigits(chunk);
+  const datePattern = new RegExp("(\\u4eca\\u65e5|\\u672c\\u65e5|\\u660e\\u65e5|\\u3042\\u3057\\u305f|\\u660e\\u5f8c\\u65e5|\\u3042\\u3055\\u3063\\u3066|[0-9]{1,2}\\u6708[0-9]{1,2}\\u65e5)", "g");
+  const timePattern = new RegExp("(\\u5348\\u524d|\\u5348\\u5f8c|\\u671d|\\u663c|\\u5915\\u65b9|\\u591c)?\\s*[0-2]?\\d\\s*(?:\\u6642|:|\\uff1a)\\s*[0-5]?\\d?\\s*(?:\\u304b\\u3089|\\u301c|~|\\u958b\\u59cb|\\u30b9\\u30bf\\u30fc\\u30c8)?", "g");
+  let title = normalized
+    .replace(datePattern, "")
+    .replace(timePattern, "")
+    .replace(new RegExp("(?:\\u00a5\\s*)?[0-9]{2,7}\\s*(?:\\u5186|yen|YEN)", "gi"), "")
+    .replace(new RegExp("^(\\u306f|\\u306b|\\u3067|\\u304b\\u3089|\\u3001|,|\\u3002|\\u30fb|\\s)+"), "")
+    .replace(new RegExp("(\\u4e88\\u5b9a|\\u4e88\\u7d04|\\u884c\\u304f|\\u884c\\u3063\\u305f|\\u3042\\u308b|\\u3042\\u3063\\u305f|\\u3059\\u308b|\\u3057\\u305f)$", "g"), "")
+    .trim();
+
+  if ((normalized.includes("\u53cb\u9054") || normalized.includes("\u53cb\u4eba")) && normalized.includes("\u30e9\u30f3\u30c1")) return "\u53cb\u9054\u3068\u30e9\u30f3\u30c1";
+  if (hasAny(normalized, ["\u30e9\u30f3\u30c1", "\u663c\u3054\u306f\u3093", "\u663c\u98df", "\u304a\u663c"])) return "\u30e9\u30f3\u30c1";
+  if (hasAny(normalized, ["\u52c9\u5f37", "\u5b66\u7fd2", "\u82f1\u8a9e", "\u8aad\u66f8", "\u8cc7\u683c", "\u5bbf\u984c"])) return "\u52c9\u5f37";
+  if (hasAny(normalized, ["\u30d9\u30ea\u30fc\u30c0\u30f3\u30b9", "\u30c0\u30f3\u30b9", "\u30cf\u30d5\u30e9", "\u30ec\u30c3\u30b9\u30f3", "\u30ea\u30cf"])) return "\u30c0\u30f3\u30b9";
+  if (hasAny(normalized, ["\u7f8e\u5bb9\u9662", "\u75c5\u9662", "\u4e88\u7d04"])) return title || "\u4e88\u7d04";
+  if (hasAny(normalized, ["\u30ab\u30d5\u30a7", "\u30b9\u30bf\u30d0", "\u30b3\u30fc\u30d2\u30fc", "\u304a\u8336"])) return "\u30ab\u30d5\u30a7";
+
+  title = title.replace(new RegExp("^(\\u591c|\\u671d|\\u663c|\\u5915\\u65b9)(\\u306f|\\u306b)?"), "").trim();
+  return title.slice(0, 24);
+}
+
+function extractPlans(text) {
   const plans = [];
 
-  chunks.forEach((chunk) => {
+  splitJournalText(text).forEach((chunk) => {
     const time = timeFromText(chunk);
-    const date = dateLabelFromText(chunk);
-    const title = titleFromPlanText(chunk, { hasDance });
-    const looksLikePlan = time || /今日|明日|あした|予定|予約|夜|朝|昼|午前|午後/.test(chunk);
+    const dateInfo = dateInfoFromText(chunk);
+    const title = cleanPlanTitle(chunk);
+    const looksLikePlan = Boolean(time) || hasAny(chunk, ["\u4e88\u5b9a", "\u4e88\u7d04", "\u660e\u65e5", "\u3042\u3057\u305f", "\u4eca\u65e5", "\u672c\u65e5", "\u304b\u3089", "\u958b\u59cb", "\u30b9\u30bf\u30fc\u30c8"]);
+    const isOnlySpending = Boolean(amountFromText(chunk)) && !time && !hasAny(chunk, ["\u4e88\u5b9a", "\u4e88\u7d04", "\u884c\u304f", "\u3042\u308b", "\u660e\u65e5", "\u4eca\u65e5"]);
 
-    if (!title || !looksLikePlan) return;
+    if (!title || !looksLikePlan || isOnlySpending) return;
 
     plans.push({
-      date,
+      date: dateInfo.label,
+      dateValue: dateInfo.value,
       time,
       title,
-      label: `${readableDateLabel(date)} ${time ? `${time}~` : ""}${title}`,
+      label: dateInfo.readable + " " + (time ? time + "~" : "") + title,
     });
   });
 
   return plans;
 }
 
+function detectMood(text) {
+  const isHappy = hasAny(text, ["\u5b09\u3057", "\u3046\u308c\u3057", "\u697d\u3057\u304b\u3063\u305f", "\u697d\u3057\u3044", "\u3088\u304b\u3063\u305f", "\u6700\u9ad8", "\u597d\u304d", "\u8912\u3081", "\u307b\u3081", "\ud83d\ude0a", "\u263a", "\ud83e\udd70"]);
+  const isGloomy = hasAny(text, ["\u6182\u9b31", "\u3086\u3046\u3046\u3064", "\u843d\u3061\u8fbc", "\u3057\u3093\u3069", "\u60b2\u3057", "\u5bc2\u3057", "\u96e8", "\u3082\u3084\u3082\u3084", "\u4e0d\u5b89"]);
+  const isTired = hasAny(text, ["\u75b2\u308c", "\u3064\u304b\u308c", "\u7720\u3044", "\u306d\u3080\u3044", "\u7dca\u5f35", "\u7126"]);
+
+  if (isGloomy && isHappy) return { mood: "\u5b09\u3057\u3044\u3051\u3069\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f" };
+  if (isGloomy) return { mood: "\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f" };
+  if (isTired && isHappy) return { mood: "\u5c11\u3057\u75b2\u308c\u305f\u3051\u3069\u524d\u5411\u304d", icon: "\u2615" };
+  if (isTired) return { mood: "\u5c11\u3057\u75b2\u308c", icon: "\u2615" };
+  if (isHappy) return { mood: "\u5b09\u3057\u3044", icon: "\ud83d\ude0a" };
+  return { mood: "\u7a4f\u3084\u304b", icon: "\u25e1" };
+}
+
+function detectActivity(text) {
+  if (hasAny(text, ["\u30d9\u30ea\u30fc\u30c0\u30f3\u30b9", "\u30c0\u30f3\u30b9", "\u30cf\u30d5\u30e9", "\u30ec\u30c3\u30b9\u30f3", "\u30ea\u30cf"])) return "\u30d9\u30ea\u30fc\u30c0\u30f3\u30b9";
+  if (hasAny(text, ["\u52c9\u5f37", "\u82f1\u8a9e", "\u8aad\u66f8", "\u8cc7\u683c"])) return "\u52c9\u5f37";
+  if (hasAny(text, ["\u6563\u6b69", "\u30b8\u30e0", "\u30e8\u30ac", "\u904b\u52d5"])) return "\u904b\u52d5";
+  return "";
+}
+
+function memoryFromText(text, activity, mood) {
+  if (hasAny(text, ["\u8912\u3081", "\u307b\u3081"])) return "\u8912\u3081\u3089\u308c\u305f\u3053\u3068";
+  if (activity && hasAny(text, ["\u697d\u3057\u304b\u3063\u305f", "\u697d\u3057\u3044", "\u5b09\u3057", "\u3046\u308c\u3057"])) return activity + "\u304c\u697d\u3057\u304b\u3063\u305f";
+  if (hasAny(text, ["\u3067\u304d\u305f", "\u7d42\u308f\u3063\u305f", "\u9811\u5f35\u3063\u305f", "\u304c\u3093\u3070\u3063\u305f", "\u884c\u3051\u305f"])) return "\u4eca\u65e5\u3067\u304d\u305f\u3053\u3068";
+  if (mood.includes("\u5b09\u3057\u3044")) return "\u5b09\u3057\u304b\u3063\u305f\u3053\u3068";
+  return "\u4eca\u65e5\u306e\u8a18\u9332";
+}
+
 function classify(text) {
   const amount = amountFromText(text);
-  const isHappy = /嬉し|うれし|楽しかった|楽しい|よかった|最高|好き|褒め|😊|☺/.test(text);
-  const isGloomy = /憂鬱|ゆううつ|落ち込|しんど|悲し|寂し|雨|雨が続|もやもや/.test(text);
-  const isTired = /疲|不安|つら|眠|だる|緊張|焦/.test(text);
-  const hasDance = /ダンス|ベリーダンス|踊|ハフラ|レッスン|リハ|発表会|シルクロード/.test(text);
-  const hasLunch = /昼|ランチ|スタバ|ごはん|食べ|飲ん/.test(text);
-  const hasCafe = /カフェ|スタバ|コーヒー|ラテ|フラペチーノ/.test(text);
-  const hasPlan = /明日|予約|予定|美容院|夜|[0-9０-９]{1,2}時|午前|午後/.test(text);
-  const compliment = /褒め|ほめ|認め|すごい|頑張った/.test(text);
-  const mood = isGloomy ? (isHappy ? "嬉しいけど少し憂鬱" : "少し憂鬱") : isTired ? "少し疲れ" : isHappy ? "嬉しい" : "穏やか";
-  const moodIcon = isGloomy ? "☁" : isTired ? "☕" : isHappy ? "😊" : "◡";
-  const plans = extractPlans(text, { hasDance });
+  const moodData = detectMood(text);
+  const plans = extractPlans(text);
   const firstPlan = plans[0];
-  const plan = plans.length ? plans.map((item) => item.label).join(" / ") : "なし";
-  const memory =
-    compliment ? "褒められたこと" : hasDance && isHappy ? "ダンスを楽しめた" : isHappy ? "嬉しかったこと" : "今日の記録";
-  const growth =
-    compliment ? "褒められたことをGrowthに記録" : hasDance ? "ダンスに取り組めた" : "今日の記録をGrowthに追加";
+  const activity = detectActivity(text);
+  const spendingTitle = amount ? spendingTitleFromText(text) : "";
+  const memory = memoryFromText(text, activity, moodData.mood);
+  const growth = activity
+    ? activity + "\u306e\u8a18\u9332\u3092Growth\u306b\u8ffd\u52a0"
+    : hasAny(text, ["\u8912\u3081", "\u307b\u3081", "\u9811\u5f35\u3063\u305f", "\u304c\u3093\u3070\u3063\u305f", "\u3067\u304d\u305f"])
+      ? "\u4eca\u65e5\u3067\u304d\u305f\u3053\u3068\u3092Growth\u306b\u8ffd\u52a0"
+      : "\u4eca\u65e5\u306e\u8a18\u9332\u3092Growth\u306b\u8ffd\u52a0";
 
   return {
-    mood,
-    moodIcon,
-    journal: text.slice(0, 80),
+    mood: moodData.mood,
+    moodIcon: moodData.icon,
+    journal: text.slice(0, 120),
     memory,
-    plan,
+    plan: plans.length ? plans.map((item) => item.label).join(" / ") : "\u306a\u3057",
     plans,
     planDate: firstPlan?.date ?? "today",
     planTime: firstPlan?.time ?? null,
     planTitle: firstPlan?.title ?? "",
-    spendingTitle: amount ? (hasLunch ? "ランチ" : hasCafe ? "カフェ" : "支出") : "",
+    spendingTitle,
     amount,
-    activity: hasDance ? "ベリーダンス" : "",
-    habit: hasDance ? "ダンス習慣 +1" : "",
+    activity,
+    habit: activity ? activity + " +1" : "",
     growth,
-    vision: hasDance ? "ダンス目標の進捗 +1" : "",
+    vision: activity ? activity + "\u76ee\u6a19\u306e\u9032\u6357 +1" : "",
     raw: text,
   };
 }
 
 function renderPreview(data) {
+  const none = "\u306a\u3057";
   const rows = [
     ["Mood", data.mood],
     ["Journal", data.journal],
     ["Memories", data.memory],
     ["Plans", data.plan],
-    ["Spending", data.amount ? `${data.spendingTitle} ${data.amount.toLocaleString("ja-JP")}円` : "なし"],
-    ["Activity", data.activity || "なし"],
-    ["Habits", data.habit || "なし"],
+    ["Spending", data.amount ? data.spendingTitle + " " + data.amount.toLocaleString("ja-JP") + "\u5186" : none],
+    ["Activity", data.activity || none],
+    ["Habits", data.habit || none],
     ["Growth", data.growth],
-    ["Vision", data.vision || "なし"],
+    ["Vision", data.vision || none],
   ];
 
   savePreview.innerHTML = "";
@@ -742,28 +816,37 @@ function updateGrowth(delta) {
 }
 
 function updateLocalFolders(data) {
+  const none = "\u306a\u3057";
+  const happyMoment = hasAny(data.raw, ["\u5b09\u3057", "\u3046\u308c\u3057", "\u697d\u3057\u304b\u3063\u305f", "\u697d\u3057\u3044", "\u8912\u3081", "\u307b\u3081"])
+    ? data.memory
+    : none;
+  const gratitude = hasAny(data.raw, ["\u611f\u8b1d", "\u3042\u308a\u304c\u3068\u3046", "\u52a9\u304b\u3063\u305f"])
+    ? data.raw.slice(0, 80)
+    : none;
+
   folderData.memories.sections = [
     ["Journal", data.journal],
-    ["Happy Moments", /嬉し|うれし|楽しかった|楽しい|褒め|ほめ/.test(data.raw) ? data.memory : "なし"],
-    ["Done List", data.activity ? `${data.activity}に行った` : data.memory],
-    ["Gratitude", /感謝|ありがとう|ありがた|助か/.test(data.raw) ? data.raw.slice(0, 80) : "なし"],
+    ["Happy Moments", happyMoment],
+    ["Done List", data.activity ? data.activity + "\u3092\u8a18\u9332" : data.memory],
+    ["Gratitude", gratitude],
     ["Memories", data.memory],
   ];
 
   const newCalendarEvents = [
     ...(data.plans ?? []).map((item) => ({
       date: item.date,
+      dateValue: item.dateValue,
       time: item.time,
       title: item.title,
-      kind: "Plan",
+      kind: "personal",
     })),
     ...(data.amount
       ? [
           {
             date: "today",
             time: null,
-            title: `${data.spendingTitle} ${data.amount.toLocaleString("ja-JP")}円`,
-            kind: "Spending",
+            title: data.spendingTitle + " " + data.amount.toLocaleString("ja-JP") + "\u5186",
+            kind: "finance",
           },
         ]
       : []),
@@ -771,12 +854,11 @@ function updateLocalFolders(data) {
       date: "today",
       time: null,
       title: data.mood,
-      kind: "Mood",
+      kind: "habit",
     },
   ];
 
   folderData.calendar.events = [...(folderData.calendar.events ?? []), ...newCalendarEvents];
-
   folderData.calendar.sections = [];
 }
 
@@ -1755,23 +1837,23 @@ saveDraft.addEventListener("click", async () => {
   }
 
   moodFace.textContent = draft.moodIcon;
-  moodText.textContent = `${draft.mood}. ${draft.journal}`;
+  moodText.textContent = draft.mood + ". " + draft.journal;
   latestMemory.textContent = draft.memory;
 
   if (draft.plans?.length) {
     draft.plans.forEach((planItem) => {
-    const item = document.createElement("li");
+      const item = document.createElement("li");
       item.innerHTML = "<time></time><span></span>";
-      item.querySelector("time").textContent = planItem.date === "tomorrow" ? "Tomorrow" : "Today";
-      item.querySelector("span").textContent = `${planItem.time ? `${planItem.time} ` : ""}${planItem.title}`;
-    todayPlans.append(item);
+      item.querySelector("time").textContent = shortDateLabel(planItem.date);
+      item.querySelector("span").textContent = (planItem.time ? planItem.time + " " : "") + planItem.title;
+      todayPlans.append(item);
     });
   }
 
   if (draft.amount) {
     saving = Math.min(50000, saving + Math.round(draft.amount * 0.1));
-    rewardSaving.textContent = `${saving.toLocaleString("ja-JP")}円`;
-    savingBar.style.width = `${Math.round((saving / 50000) * 100)}%`;
+    rewardSaving.textContent = saving.toLocaleString("ja-JP") + "\u5186";
+    savingBar.style.width = Math.round((saving / 50000) * 100) + "%";
   }
 
   updateGrowth(15);
