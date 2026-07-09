@@ -315,7 +315,7 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function planStartIso({ dateLabel = "today", dateValue, time = "09:00", baseIso } = {}) {
+function planStartIso({ dateLabel = "today", dateValue, time = "", baseIso } = {}) {
   const startsAt = baseIso ? new Date(baseIso) : new Date();
   if (dateValue) {
     const [year, month, day] = dateValue.split("-").map(Number);
@@ -330,19 +330,18 @@ function planStartIso({ dateLabel = "today", dateValue, time = "09:00", baseIso 
     startsAt.setTime(Date.now());
     startsAt.setDate(startsAt.getDate() + 1);
   }
-  const [hour = "9", minute = "0"] = time.split(":");
+  const [hour = "0", minute = "0"] = (time || "").split(":");
   startsAt.setHours(Number(hour), Number(minute), 0, 0);
   return startsAt.toISOString();
 }
 
 function normalizeMood(draft) {
   const text = `${draft.mood ?? ""} ${draft.raw ?? ""}`;
-  if (/憂鬱|ゆううつ|落ち込|しんど|悲し|寂し|雨|もやもや|sad/i.test(text)) return "sad";
-  if (/疲|tired|つら|不安|眠|だる|緊張|焦/i.test(text)) return "tired";
-  if (/嬉|楽|褒|happy|good|joy/i.test(text)) return "happy";
+  if (/\u6182\u9b31|\u3086\u3046\u3046\u3064|\u843d\u3061\u8fbc|\u3057\u3093\u3069|\u60b2\u3057|\u5bc2\u3057|\u96e8|\u3082\u3084\u3082\u3084|sad/i.test(text)) return "sad";
+  if (/\u75b2\u308c|\u3064\u304b\u308c|\u7720\u3044|\u306d\u3080\u3044|\u7dca\u5f35|\u7126|tired/i.test(text)) return "tired";
+  if (/\u5b09\u3057|\u3046\u308c\u3057|\u697d\u3057|happy|good|joy/i.test(text)) return "happy";
   return "calm";
 }
-
 async function getUserStats(userId) {
   const { data, error } = await supabase
     .from("user_stats")
@@ -453,7 +452,7 @@ export async function saveBloomDraft({ userId, draft }) {
         draft.plans.map((plan) => ({
         user_id: userId,
           title: plan.title,
-          starts_at: planStartIso({ dateLabel: plan.date, dateValue: plan.dateValue, time: plan.time ?? "09:00" }),
+          starts_at: planStartIso({ dateLabel: plan.date, dateValue: plan.dateValue, time: plan.time || "" }),
         kind: "personal",
         source_app: "bloom_os",
         }))

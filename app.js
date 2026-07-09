@@ -115,6 +115,30 @@ let visionState = {
   loaded: false,
   saving: false,
 };
+
+const assetUrl = (path) => new URL(path, import.meta.url).href;
+const MOOD_ASSETS = {
+  happy: assetUrl("./assets/icons/icon/emotion/emotion_happy.png"),
+  excited: assetUrl("./assets/icons/icon/emotion/emotion_excited.png"),
+  good: assetUrl("./assets/icons/icon/emotion/emotion_good.png"),
+  calm: assetUrl("./assets/icons/icon/emotion/emotion_normal.png"),
+  tired: assetUrl("./assets/icons/icon/emotion/emotion_taired.png"),
+  sad: assetUrl("./assets/icons/icon/emotion/emotion_sad.png"),
+  bad: assetUrl("./assets/icons/icon/emotion/emotion_bad.png"),
+};
+
+function setMoodFace(asset = MOOD_ASSETS.calm, fallback = "") {
+  if (!moodFace) return;
+  moodFace.textContent = "";
+  const img = document.createElement("img");
+  img.src = asset || MOOD_ASSETS.calm;
+  img.alt = fallback || "Mood";
+  img.loading = "lazy";
+  img.onerror = () => {
+    moodFace.textContent = fallback || "Mood";
+  };
+  moodFace.append(img);
+}
 let visionDrag = null;
 let goalState = null;
 let goalSaveTimer = null;
@@ -605,11 +629,12 @@ async function loadCalendarEvents(userId) {
     const events = await getCalendarEvents({ userId, days: 14 });
     folderData.calendar.events = events.map((event) => {
       const startsAt = new Date(event.starts_at);
+      const hasTime = startsAt.getHours() !== 0 || startsAt.getMinutes() !== 0;
       return {
         id: event.id,
         date: dateLabelFromDate(startsAt),
         dateValue: dateInputValueFromDate(startsAt),
-        time: timeLabelFromDate(startsAt),
+        time: hasTime ? timeLabelFromDate(startsAt) : "",
         title: event.title,
         kind: event.kind ?? "personal",
         kindLabel: calendarKindLabel(event.kind ?? "personal"),
@@ -690,7 +715,8 @@ function cleanPlanTitle(chunk) {
   if (hasAny(normalized, ["\u30e9\u30f3\u30c1", "\u663c\u3054\u306f\u3093", "\u663c\u98df", "\u304a\u663c"])) return "\u30e9\u30f3\u30c1";
   if (hasAny(normalized, ["\u52c9\u5f37", "\u5b66\u7fd2", "\u82f1\u8a9e", "\u8aad\u66f8", "\u8cc7\u683c", "\u5bbf\u984c"])) return "\u52c9\u5f37";
   if (hasAny(normalized, ["\u30d9\u30ea\u30fc\u30c0\u30f3\u30b9", "\u30c0\u30f3\u30b9", "\u30cf\u30d5\u30e9", "\u30ec\u30c3\u30b9\u30f3", "\u30ea\u30cf"])) return "\u30c0\u30f3\u30b9";
-  if (hasAny(normalized, ["\u7f8e\u5bb9\u9662", "\u75c5\u9662", "\u4e88\u7d04"])) return title || "\u4e88\u7d04";
+  if (hasAny(normalized, ["\u7f8e\u5bb9\u9662", "\u7f8e\u5bb9\u5ba4", "\u30d8\u30a2\u30b5\u30ed\u30f3", "\u30b5\u30ed\u30f3"])) return "\u7f8e\u5bb9\u9662";
+  if (hasAny(normalized, ["\u75c5\u9662", "\u6b6f\u533b\u8005", "\u30af\u30ea\u30cb\u30c3\u30af", "\u4e88\u7d04"])) return title || "\u4e88\u7d04";
   if (hasAny(normalized, ["\u30ab\u30d5\u30a7", "\u30b9\u30bf\u30d0", "\u30b3\u30fc\u30d2\u30fc", "\u304a\u8336"])) return "\u30ab\u30d5\u30a7";
 
   title = title.replace(new RegExp("^(\\u591c|\\u671d|\\u663c|\\u5915\\u65b9)(\\u306f|\\u306b)?"), "").trim();
@@ -704,7 +730,7 @@ function extractPlans(text) {
     const time = timeFromText(chunk);
     const dateInfo = dateInfoFromText(chunk);
     const title = cleanPlanTitle(chunk);
-    const looksLikePlan = Boolean(time) || hasAny(chunk, ["\u4e88\u5b9a", "\u4e88\u7d04", "\u660e\u65e5", "\u3042\u3057\u305f", "\u4eca\u65e5", "\u672c\u65e5", "\u304b\u3089", "\u958b\u59cb", "\u30b9\u30bf\u30fc\u30c8"]);
+    const looksLikePlan = Boolean(time) || hasAny(chunk, ["\u4e88\u5b9a", "\u4e88\u7d04", "\u660e\u65e5", "\u3042\u3057\u305f", "\u4eca\u65e5", "\u672c\u65e5", "\u304b\u3089", "\u958b\u59cb", "\u30b9\u30bf\u30fc\u30c8", "\u7f8e\u5bb9\u9662", "\u7f8e\u5bb9\u5ba4", "\u30d8\u30a2\u30b5\u30ed\u30f3", "\u30b5\u30ed\u30f3", "\u75c5\u9662", "\u6b6f\u533b\u8005", "\u30cd\u30a4\u30eb", "\u30e9\u30f3\u30c1", "\u52c9\u5f37", "\u30c0\u30f3\u30b9"]);
     const isOnlySpending = Boolean(amountFromText(chunk)) && !time && !hasAny(chunk, ["\u4e88\u5b9a", "\u4e88\u7d04", "\u884c\u304f", "\u3042\u308b", "\u660e\u65e5", "\u4eca\u65e5"]);
 
     if (!title || !looksLikePlan || isOnlySpending) return;
@@ -726,12 +752,12 @@ function detectMood(text) {
   const isGloomy = hasAny(text, ["\u6182\u9b31", "\u3086\u3046\u3046\u3064", "\u843d\u3061\u8fbc", "\u3057\u3093\u3069", "\u60b2\u3057", "\u5bc2\u3057", "\u96e8", "\u3082\u3084\u3082\u3084", "\u4e0d\u5b89"]);
   const isTired = hasAny(text, ["\u75b2\u308c", "\u3064\u304b\u308c", "\u7720\u3044", "\u306d\u3080\u3044", "\u7dca\u5f35", "\u7126"]);
 
-  if (isGloomy && isHappy) return { mood: "\u5b09\u3057\u3044\u3051\u3069\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f" };
-  if (isGloomy) return { mood: "\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f" };
-  if (isTired && isHappy) return { mood: "\u5c11\u3057\u75b2\u308c\u305f\u3051\u3069\u524d\u5411\u304d", icon: "\u2615" };
-  if (isTired) return { mood: "\u5c11\u3057\u75b2\u308c", icon: "\u2615" };
-  if (isHappy) return { mood: "\u5b09\u3057\u3044", icon: "\ud83d\ude0a" };
-  return { mood: "\u7a4f\u3084\u304b", icon: "\u25e1" };
+  if (isGloomy && isHappy) return { mood: "\u5b09\u3057\u3044\u3051\u3069\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f", asset: MOOD_ASSETS.good };
+  if (isGloomy) return { mood: "\u5c11\u3057\u6182\u9b31", icon: "\u2601\ufe0f", asset: MOOD_ASSETS.sad };
+  if (isTired && isHappy) return { mood: "\u5c11\u3057\u75b2\u308c\u305f\u3051\u3069\u524d\u5411\u304d", icon: "\u2615", asset: MOOD_ASSETS.good };
+  if (isTired) return { mood: "\u5c11\u3057\u75b2\u308c", icon: "\u2615", asset: MOOD_ASSETS.tired };
+  if (isHappy) return { mood: "\u5b09\u3057\u3044", icon: "\ud83d\ude0a", asset: MOOD_ASSETS.happy };
+  return { mood: "\u7a4f\u3084\u304b", icon: "\u25e1", asset: MOOD_ASSETS.calm };
 }
 
 function detectActivity(text) {
@@ -766,6 +792,7 @@ function classify(text) {
   return {
     mood: moodData.mood,
     moodIcon: moodData.icon,
+    moodAsset: moodData.asset,
     journal: text.slice(0, 120),
     memory,
     plan: plans.length ? plans.map((item) => item.label).join(" / ") : "\u306a\u3057",
@@ -908,7 +935,7 @@ function renderFolder(key) {
           mark.setAttribute("aria-hidden", "true");
 
           const time = document.createElement("time");
-          time.textContent = event.time || "--:--";
+          time.textContent = event.time || "";
 
           const titleText = document.createElement("strong");
           titleText.textContent = event.title;
@@ -1216,7 +1243,7 @@ function renderCalendarEditor(event) {
 
   editor.querySelector(".calendar-editor-title").value = event.title ?? "";
   editor.querySelector(".calendar-editor-date").value = event.dateValue ?? dateInputValueFromDate(new Date());
-  editor.querySelector(".calendar-editor-time").value = event.time || "09:00";
+  editor.querySelector(".calendar-editor-time").value = event.time || "";
 
   const kindSelect = editor.querySelector(".calendar-editor-kind");
   calendarKindOptions.forEach(([value, label]) => {
@@ -1271,7 +1298,7 @@ async function handleCalendarAction(button) {
         eventId,
         title: titleInput.value.trim() || "予定",
         dateValue: dateInput.value,
-        time: timeInput.value || "09:00",
+        time: timeInput.value || "",
         kind: kindInput.value || "personal",
         currentStartsAt: event?.startsAt,
       });
@@ -1836,7 +1863,7 @@ saveDraft.addEventListener("click", async () => {
     return;
   }
 
-  moodFace.textContent = draft.moodIcon;
+  setMoodFace(draft.moodAsset, draft.moodIcon);
   moodText.textContent = draft.mood + ". " + draft.journal;
   latestMemory.textContent = draft.memory;
 
@@ -1936,4 +1963,5 @@ homeButton.addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
+setMoodFace(MOOD_ASSETS.happy, "\ud83d\ude0a");
 initAuth();

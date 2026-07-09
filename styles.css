@@ -507,7 +507,7 @@ button {
 
 .mood-widget {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 48px 1fr;
   align-items: center;
   gap: 10px;
 }
@@ -515,11 +515,19 @@ button {
 .mood-widget span {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 15px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   background: var(--pink);
-  font-size: 22px;
+  font-size: 20px;
+  overflow: hidden;
+}
+
+.mood-widget span img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .mood-widget p,
