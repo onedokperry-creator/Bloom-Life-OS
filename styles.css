@@ -800,6 +800,38 @@ input[type="checkbox"] {
   background: rgba(255, 248, 237, 0.72);
 }
 
+.goal-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #4d527a;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 900;
+  list-style: none;
+}
+
+.goal-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.goal-card summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(232, 223, 255, 0.72);
+  color: #777da8;
+  font-size: 16px;
+}
+
+.goal-card[open] summary::after {
+  content: "-";
+}
+
 .goal-card h3 {
   margin: 0;
   color: #4d527a;
@@ -1834,6 +1866,224 @@ input[type="checkbox"] {
 
   .mission {
     margin-top: 7px;
+  }
+
+  .goals-workspace {
+    gap: 10px;
+  }
+
+  .goal-theme-card,
+  .life-map,
+  .goal-card,
+  .goal-overview article {
+    border-radius: 16px;
+  }
+
+  .goal-theme-card {
+    padding: 12px;
+  }
+
+  .goal-theme-card p {
+    display: none;
+  }
+
+  .goal-theme-input {
+    min-height: 54px;
+    margin-top: 5px;
+    font-size: 19px;
+    line-height: 1.35;
+  }
+
+  .life-map {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .life-map-center {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .life-map-center strong {
+    min-width: 0;
+    margin-top: 0;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .life-map-categories {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 1px 1px 7px;
+    scroll-snap-type: x proximity;
+  }
+
+  .life-category {
+    min-width: 136px;
+    min-height: 84px;
+    padding: 10px;
+    border-radius: 14px;
+    scroll-snap-align: start;
+  }
+
+  .life-category span {
+    font-size: 18px;
+  }
+
+  .life-category strong {
+    font-size: 13px;
+  }
+
+  .life-category small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .life-category i {
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+  }
+
+  .goal-overview {
+    grid-template-columns: 0.75fr 1.25fr;
+  }
+
+  .goal-overview article {
+    padding: 10px;
+  }
+
+  .goal-overview article:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .goal-overview strong {
+    font-size: 20px;
+  }
+
+  .goal-overview p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .goal-card {
+    padding: 11px;
+  }
+
+  .goal-card summary {
+    font-size: 14px;
+  }
+
+  .goal-card summary::after {
+    width: 22px;
+    height: 22px;
+  }
+
+  .goal-card-head {
+    gap: 8px;
+  }
+
+  .goal-card h3 {
+    font-size: 15px;
+  }
+
+  .goal-stars {
+    font-size: 12px;
+  }
+
+  .rabbit-comment,
+  .goal-wizard p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .goal-wizard p + p {
+    display: none;
+  }
+
+  .goal-card-meta {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .goal-card-meta span {
+    flex: 0 0 auto;
+    max-width: 190px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .goal-woop,
+  .goal-map-editor {
+    gap: 8px;
+  }
+
+  .goal-woop textarea,
+  .goal-map-editor input,
+  .goal-map-editor select,
+  .goal-map-editor textarea,
+  .goal-soft-editor textarea,
+  .mandala-grid textarea {
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 8px;
+  }
+
+  .goal-editor-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .goal-ideal-planner .ideal-day-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ideal-day-list {
+    gap: 6px;
+  }
+
+  .ideal-day-list p {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 6px;
+    padding: 6px 7px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.48);
+    font-size: 12px;
+  }
+
+  .goal-soft-editor {
+    margin-top: 8px;
+  }
+
+  .mandala-grid {
+    gap: 5px;
+  }
+
+  .mandala-grid textarea {
+    min-height: 54px;
   }
 
   .taskbar {

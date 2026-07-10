@@ -1093,6 +1093,8 @@ function renderGoalsFolder() {
 
 function renderGoalDetail(category) {
   const detail = document.createElement("div");
+  const compactGoals = window.matchMedia?.("(max-width: 429px)").matches ?? false;
+  const desktopOpen = compactGoals ? "" : "open";
   detail.className = "goal-detail-grid";
   detail.dataset.categoryId = category.id;
   detail.innerHTML = `
@@ -1117,8 +1119,8 @@ function renderGoalDetail(category) {
       <p>${getGoalQuestion(category)}</p>
       <p>どうして叶えたい？ どんな自分になっていたい？ 最初の一歩は？</p>
     </article>
-    <article class="goal-card goal-map-editor">
-      <h3>Life Map Box</h3>
+    <details class="goal-card goal-map-editor" ${desktopOpen}>
+      <summary>Life Map Box</summary>
       <label>Label<input data-goal-field="label" type="text" value="" /></label>
       <label>Title<input data-goal-field="title" type="text" value="" /></label>
       <div class="goal-editor-grid">
@@ -1130,32 +1132,32 @@ function renderGoalDetail(category) {
       <label>Vision Link<input data-goal-field="vision" type="text" value="" /></label>
       <label>Reward<input data-goal-field="reward" type="text" value="" /></label>
       <p class="goal-auto-note">Rabbit Question / Comment / Progress are generated from WOOP and Plan checks.</p>
-    </article>
-    <article class="goal-card goal-woop">
-      <h3>WOOP</h3>
+    </details>
+    <details class="goal-card goal-woop" ${desktopOpen}>
+      <summary>WOOP</summary>
       <label>Wish<textarea data-goal-field="wish" rows="2"></textarea></label>
       <label>Outcome<textarea data-goal-field="outcome" rows="2"></textarea></label>
       <label>Obstacle<textarea data-goal-field="obstacle" rows="2"></textarea></label>
       <label>Plan<textarea data-goal-field="plans" rows="4"></textarea></label>
       <div class="goal-plan-checks"></div>
-    </article>
-    <article class="goal-card goal-mandala">
+    </details>
+    <details class="goal-card goal-mandala" ${desktopOpen}>
+      <summary>Mandala</summary>
       <div class="goal-card-head">
-        <h3>Mandala</h3>
         <button type="button" data-goal-action="toggle-mandala">もっと細かく考える</button>
       </div>
       <div class="mandala-grid" hidden></div>
-    </article>
-    <article class="goal-card goal-vision-link">
-      <h3>Vision</h3>
+    </details>
+    <details class="goal-card goal-vision-link" ${desktopOpen}>
+      <summary>Vision</summary>
       <p>${category.vision}</p>
       <button type="button" data-folder="vision" data-goal-action="open-vision">Visionを開く</button>
-    </article>
-    <article class="goal-card goal-reward">
-      <h3>Reward</h3>
+    </details>
+    <details class="goal-card goal-reward" ${desktopOpen}>
+      <summary>Reward</summary>
       <p>${category.reward}</p>
       <small>Moneyのごほうび貯金と連携予定</small>
-    </article>
+    </details>
   `;
 
   detail.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
