@@ -116,15 +116,14 @@ let visionState = {
   saving: false,
 };
 
-const assetUrl = (path) => new URL(path, import.meta.url).href;
 const MOOD_ASSETS = {
-  happy: assetUrl("./assets/icons/icon/emotion/emotion_happy.png"),
-  excited: assetUrl("./assets/icons/icon/emotion/emotion_excited.png"),
-  good: assetUrl("./assets/icons/icon/emotion/emotion_good.png"),
-  calm: assetUrl("./assets/icons/icon/emotion/emotion_normal.png"),
-  tired: assetUrl("./assets/icons/icon/emotion/emotion_taired.png"),
-  sad: assetUrl("./assets/icons/icon/emotion/emotion_sad.png"),
-  bad: assetUrl("./assets/icons/icon/emotion/emotion_bad.png"),
+  happy: new URL("./assets/icons/icon/emotion/emotion_happy.png", import.meta.url).href,
+  excited: new URL("./assets/icons/icon/emotion/emotion_excited.png", import.meta.url).href,
+  good: new URL("./assets/icons/icon/emotion/emotion_good.png", import.meta.url).href,
+  calm: new URL("./assets/icons/icon/emotion/emotion_normal.png", import.meta.url).href,
+  tired: new URL("./assets/icons/icon/emotion/emotion_taired.png", import.meta.url).href,
+  sad: new URL("./assets/icons/icon/emotion/emotion_sad.png", import.meta.url).href,
+  bad: new URL("./assets/icons/icon/emotion/emotion_bad.png", import.meta.url).href,
 };
 
 function setMoodFace(asset = MOOD_ASSETS.calm, fallback = "") {
@@ -135,7 +134,11 @@ function setMoodFace(asset = MOOD_ASSETS.calm, fallback = "") {
   img.alt = fallback || "Mood";
   img.loading = "lazy";
   img.onerror = () => {
-    moodFace.textContent = fallback || "Mood";
+    if (img.src !== MOOD_ASSETS.calm) {
+      img.src = MOOD_ASSETS.calm;
+      return;
+    }
+    moodFace.textContent = "Mood";
   };
   moodFace.append(img);
 }
