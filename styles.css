@@ -793,9 +793,11 @@ input[type="checkbox"] {
 .goal-detail-grid {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .goal-card {
+  min-width: 0;
   padding: 13px;
   background: rgba(255, 248, 237, 0.72);
 }
@@ -805,11 +807,31 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   color: #4d527a;
   cursor: pointer;
   font-size: 15px;
   font-weight: 900;
   list-style: none;
+}
+
+.goal-card summary span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.goal-card summary b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-card summary small {
+  color: #7b81aa;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .goal-card summary::-webkit-details-marker {
@@ -879,12 +901,14 @@ input[type="checkbox"] {
 .goal-map-editor {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .goal-woop label,
 .goal-map-editor label {
   display: grid;
   gap: 5px;
+  min-width: 0;
   color: #6d719c;
   font-size: 12px;
   font-weight: 900;
@@ -936,6 +960,7 @@ input[type="checkbox"] {
 .goal-plan-checks {
   display: grid;
   gap: 7px;
+  min-width: 0;
   padding: 10px;
   border: 1px solid rgba(117, 126, 176, 0.14);
   border-radius: 14px;
@@ -946,9 +971,23 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   color: #555c88;
   font-size: 13px;
   font-weight: 900;
+}
+
+.goal-plan-checks label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.goal-plan-empty {
+  margin: 0;
+  color: #8a8fb4;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
 }
 
 .goal-plan-checks input {
@@ -1870,6 +1909,9 @@ input[type="checkbox"] {
 
   .goals-workspace {
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .goal-theme-card,
@@ -1980,10 +2022,21 @@ input[type="checkbox"] {
 
   .goal-card {
     padding: 11px;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .goal-card summary {
+    align-items: flex-start;
     font-size: 14px;
+  }
+
+  .goal-card summary b {
+    white-space: normal;
+  }
+
+  .goal-card summary small {
+    display: block;
   }
 
   .goal-card summary::after {
@@ -2021,12 +2074,13 @@ input[type="checkbox"] {
     display: flex;
     gap: 6px;
     overflow-x: auto;
+    max-width: 100%;
     padding-bottom: 2px;
   }
 
   .goal-card-meta span {
     flex: 0 0 auto;
-    max-width: 190px;
+    max-width: min(190px, 72vw);
     padding: 5px 8px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.58);
@@ -2046,6 +2100,8 @@ input[type="checkbox"] {
   .goal-map-editor textarea,
   .goal-soft-editor textarea,
   .mandala-grid textarea {
+    min-width: 0;
+    max-width: 100%;
     border-radius: 10px;
     font-size: 12px;
     line-height: 1.45;
@@ -2055,6 +2111,37 @@ input[type="checkbox"] {
   .goal-editor-grid {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .goal-plan-checks {
+    padding: 8px;
+  }
+
+  .goal-plan-checks label {
+    align-items: flex-start;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .goal-plan-checks input {
+    flex: 0 0 auto;
+    margin-top: 1px;
+  }
+
+  .goal-plan-empty {
+    font-size: 11px;
+  }
+
+  .goal-mandala button,
+  .goal-vision-link button {
+    width: 100%;
+    border-radius: 12px;
+    white-space: normal;
+  }
+
+  .goal-reward p,
+  .goal-vision-link p {
+    overflow-wrap: anywhere;
   }
 
   .goal-ideal-planner .ideal-day-list {

@@ -1120,7 +1120,7 @@ function renderGoalDetail(category) {
       <p>どうして叶えたい？ どんな自分になっていたい？ 最初の一歩は？</p>
     </article>
     <details class="goal-card goal-map-editor" ${desktopOpen}>
-      <summary>Life Map Box</summary>
+      <summary><span><b>Life Map Box</b><small>名前・優先度・ごほうびを整える</small></span></summary>
       <label>Label<input data-goal-field="label" type="text" value="" /></label>
       <label>Title<input data-goal-field="title" type="text" value="" /></label>
       <div class="goal-editor-grid">
@@ -1133,8 +1133,8 @@ function renderGoalDetail(category) {
       <label>Reward<input data-goal-field="reward" type="text" value="" /></label>
       <p class="goal-auto-note">Rabbit Question / Comment / Progress are generated from WOOP and Plan checks.</p>
     </details>
-    <details class="goal-card goal-woop" ${desktopOpen}>
-      <summary>WOOP</summary>
+    <details class="goal-card goal-woop" open>
+      <summary><span><b>WOOP</b><small>願いをPlanへ分解する</small></span></summary>
       <label>Wish<textarea data-goal-field="wish" rows="2"></textarea></label>
       <label>Outcome<textarea data-goal-field="outcome" rows="2"></textarea></label>
       <label>Obstacle<textarea data-goal-field="obstacle" rows="2"></textarea></label>
@@ -1142,19 +1142,19 @@ function renderGoalDetail(category) {
       <div class="goal-plan-checks"></div>
     </details>
     <details class="goal-card goal-mandala" ${desktopOpen}>
-      <summary>Mandala</summary>
+      <summary><span><b>Mandala</b><small>もっと細かく考える</small></span></summary>
       <div class="goal-card-head">
         <button type="button" data-goal-action="toggle-mandala">もっと細かく考える</button>
       </div>
       <div class="mandala-grid" hidden></div>
     </details>
     <details class="goal-card goal-vision-link" ${desktopOpen}>
-      <summary>Vision</summary>
+      <summary><span><b>Vision</b><small>理想の景色を確認する</small></span></summary>
       <p>${category.vision}</p>
       <button type="button" data-folder="vision" data-goal-action="open-vision">Visionを開く</button>
     </details>
     <details class="goal-card goal-reward" ${desktopOpen}>
-      <summary>Reward</summary>
+      <summary><span><b>Reward</b><small>叶えた先のごほうび</small></span></summary>
       <p>${category.reward}</p>
       <small>Moneyのごほうび貯金と連携予定</small>
     </details>
@@ -1181,13 +1181,7 @@ function renderGoalDetail(category) {
   });
 
   const planChecks = detail.querySelector(".goal-plan-checks");
-  splitGoalLines(category.woop.plans).forEach((plan, index) => {
-    const label = document.createElement("label");
-    label.innerHTML = `<input data-goal-field="completedPlan" data-index="${index}" type="checkbox" /> <span></span>`;
-    label.querySelector("input").checked = Boolean(category.completedPlans?.[index]);
-    label.querySelector("span").textContent = plan;
-    planChecks.append(label);
-  });
+  renderGoalPlanChecks(planChecks, category);
 
   const mandalaGrid = detail.querySelector(".mandala-grid");
   category.mandala.forEach((cell, index) => {
@@ -1212,6 +1206,27 @@ function renderGoalDetail(category) {
   }
 
   return detail;
+}
+
+function renderGoalPlanChecks(container, category) {
+  if (!container) return;
+  container.innerHTML = "";
+  const plans = splitGoalLines(category.woop.plans);
+  if (!plans.length) {
+    const empty = document.createElement("p");
+    empty.className = "goal-plan-empty";
+    empty.textContent = "Planを1行ずつ入力すると、ここに小さなActionチェックが並びます。";
+    container.append(empty);
+    return;
+  }
+
+  plans.forEach((plan, index) => {
+    const label = document.createElement("label");
+    label.innerHTML = `<input data-goal-field="completedPlan" data-index="${index}" type="checkbox" /> <span></span>`;
+    label.querySelector("input").checked = Boolean(category.completedPlans?.[index]);
+    label.querySelector("span").textContent = plan;
+    container.append(label);
+  });
 }
 
 function renderCalendarEditor(event) {
@@ -1749,6 +1764,7 @@ function saveGoalField(field) {
       .filter(Boolean);
     category.completedPlans = category.woop.plans.map((_, index) => Boolean(category.completedPlans?.[index]));
     category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
+    renderGoalPlanChecks(field.closest(".goal-woop")?.querySelector(".goal-plan-checks"), category);
   }
 
   if (["label", "title", "matrix", "nextAction", "vision", "reward", "progressSource"].includes(key)) {
@@ -1923,6 +1939,12 @@ folderContent.addEventListener("click", (event) => {
   const visionButton = event.target.closest("[data-vision-action]");
   if (visionButton) {
     handleVisionAction(visionButton);
+  }
+});
+
+folderContent.addEventListener("input", (event) => {
+  if (event.target.matches('[data-goal-field="plans"]')) {
+    saveGoalField(event.target);
   }
 });
 
