@@ -129,6 +129,28 @@ const MOOD_ASSETS = {
   bad: new URL("./assets/icons/icon/emotion/emotion_bad.png", import.meta.url).href,
 };
 
+const RABBIT_HOME_ICONS = [
+  "rabbit_happy.png",
+  "rabbit_heart.png",
+  "rabbit_joy.png",
+  "rabbit_glad.png",
+  "rabbit_good.png",
+  "rabbit_smile.png",
+  "rabbit_love.png",
+  "rabbit_cheer.png",
+  "rabbit_blink.png",
+  "rabbit_relax.png",
+];
+
+function setRandomHomeRabbitIcon() {
+  const file = RABBIT_HOME_ICONS[Math.floor(Math.random() * RABBIT_HOME_ICONS.length)];
+  const src = `assets/icons/icon/rabbit/${file}`;
+  document.querySelectorAll(".random-rabbit-icon").forEach((image) => {
+    image.src = src;
+    image.alt = "Bloom rabbit";
+  });
+}
+
 function setMoodFace(asset = MOOD_ASSETS.calm, fallback = "") {
   if (!moodFace) return;
   moodFace.textContent = "";
@@ -2059,5 +2081,6 @@ homeButton.addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
+setRandomHomeRabbitIcon();
 setMoodFace(MOOD_ASSETS.happy, "\ud83d\ude0a");
 initAuth();

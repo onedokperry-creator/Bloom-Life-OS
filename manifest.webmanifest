@@ -1,0 +1,23 @@
+{
+  "name": "Bloom OS",
+  "short_name": "Bloom OS",
+  "description": "A tiny desktop for growing your life.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff8fb",
+  "theme_color": "#f7e9f4",
+  "icons": [
+    {
+      "src": "assets/icons/icon/rabbit/rabbit_heart.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon/rabbit/rabbit_heart.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
