@@ -58,6 +58,40 @@ export async function getCalendarEvents({ userId, days = 7 }) {
   return data ?? [];
 }
 
+export async function getTodayTasks({ userId, limit = 6 }) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id,title,status,due_date,due_at,completed_at,source_app,updated_at")
+    .eq("user_id", userId)
+    .neq("status", "archived")
+    .or(`due_date.eq.${today},due_date.is.null`)
+    .order("status", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function updateTaskStatus({ userId, taskId, done }) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({
+      status: done ? "done" : "todo",
+      completed_at: done ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", taskId)
+    .eq("user_id", userId)
+    .select("id,title,status,due_date,due_at,completed_at,source_app,updated_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function updateCalendarEvent({
   userId,
   eventId,

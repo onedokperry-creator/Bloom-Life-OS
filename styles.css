@@ -586,6 +586,13 @@ button {
   font-weight: 800;
 }
 
+.mission-empty {
+  margin: 10px 0 0;
+  color: #8582a7;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -673,7 +680,7 @@ input[type="checkbox"] {
 }
 
 .goal-theme-card p,
-.goal-wizard p,
+.goal-guide p,
 .rabbit-comment {
   margin: 8px 0 0;
   color: #60668f;
@@ -858,6 +865,69 @@ input[type="checkbox"] {
   margin: 0;
   color: #4d527a;
   font-size: 16px;
+}
+
+.goal-guide {
+  background:
+    radial-gradient(circle at 92% 8%, rgba(199, 240, 224, 0.58), transparent 22%),
+    rgba(255, 248, 237, 0.74);
+}
+
+.goal-step-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.goal-step-list div {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(117, 126, 176, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #555c88;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.goal-step-list b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pink), var(--lavender-strong));
+  color: #fff;
+  font-size: 12px;
+}
+
+.goal-step-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.field-hint {
+  color: #8a8fb4;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.goal-advanced-settings {
+  min-width: 0;
+  margin-top: 2px;
+  padding: 9px;
+  border: 1px dashed rgba(117, 126, 176, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.goal-advanced-settings summary {
+  font-size: 13px;
 }
 
 .goal-card-head {
@@ -2057,7 +2127,7 @@ input[type="checkbox"] {
   }
 
   .rabbit-comment,
-  .goal-wizard p {
+  .goal-guide p {
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
@@ -2066,8 +2136,20 @@ input[type="checkbox"] {
     line-height: 1.55;
   }
 
-  .goal-wizard p + p {
-    display: none;
+  .goal-step-list {
+    gap: 6px;
+  }
+
+  .goal-step-list div {
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 6px 7px;
+    font-size: 11px;
+  }
+
+  .goal-step-list b {
+    width: 21px;
+    height: 21px;
+    font-size: 11px;
   }
 
   .goal-card-meta {

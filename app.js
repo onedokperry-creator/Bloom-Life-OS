@@ -6,6 +6,7 @@ import {
   getGoalLifeMap,
   getCalendarEvents,
   getCurrentUser,
+  getTodayTasks,
   getVisionBoards,
   hasSupabaseConfig,
   saveBloomDraft,
@@ -16,6 +17,7 @@ import {
   upsertGoalLifeMap,
   updateVisionBoard,
   updateCalendarEvent,
+  updateTaskStatus,
   updateVisionItem,
   uploadVisionImage,
 } from "./supabase-client.js";
@@ -92,6 +94,7 @@ const expBar = document.querySelector("#expBar");
 const rewardSaving = document.querySelector("#rewardSaving");
 const savingBar = document.querySelector("#savingBar");
 const missionChecks = document.querySelectorAll(".mission input");
+const missionsWidget = document.querySelector("#missionsWidget");
 const homeButton = document.querySelector("#homeButton");
 const authScreen = document.querySelector("#authScreen");
 const appShell = document.querySelector("#appShell");
@@ -484,6 +487,7 @@ function showApp(user) {
   if (userEmail) userEmail.textContent = user.email ?? "Signed in";
   loadGoalStateFromSupabase(user.id);
   loadCalendarEvents(user.id);
+  loadTaskMissions(user.id);
   loadVisionBoards(user.id);
 }
 
@@ -646,6 +650,42 @@ async function loadCalendarEvents(userId) {
     });
   } catch (error) {
     addMessage("assistant", `Calendarを読み込めませんでした: ${error.message}`);
+  }
+}
+
+function renderTaskMissions(tasks = []) {
+  if (!missionsWidget) return;
+
+  missionsWidget.querySelectorAll(".mission, .mission-empty").forEach((element) => element.remove());
+
+  if (!tasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "mission-empty";
+    empty.textContent = "Task appの今日のタスクがここに表示されます。";
+    missionsWidget.append(empty);
+    return;
+  }
+
+  tasks.forEach((task) => {
+    const label = document.createElement("label");
+    label.className = "mission";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = task.status === "done";
+    checkbox.dataset.taskId = task.id;
+
+    label.append(checkbox, ` ${task.title}`);
+    missionsWidget.append(label);
+  });
+}
+
+async function loadTaskMissions(userId) {
+  try {
+    const tasks = await getTodayTasks({ userId, limit: 6 });
+    renderTaskMissions(tasks);
+  } catch (error) {
+    addMessage("assistant", `Tasksを読み込めませんでした: ${error.message}`);
   }
 }
 
@@ -1114,42 +1154,50 @@ function renderGoalDetail(category) {
         <span>Next: ${category.nextAction}</span>
       </div>
     </article>
-    <article class="goal-card goal-wizard">
-      <span>Goal Wizard</span>
-      <p>${getGoalQuestion(category)}</p>
-      <p>どうして叶えたい？ どんな自分になっていたい？ 最初の一歩は？</p>
-    </article>
-    <details class="goal-card goal-map-editor" ${desktopOpen}>
-      <summary><span><b>Life Map Box</b><small>名前・優先度・ごほうびを整える</small></span></summary>
-      <label>Label<input data-goal-field="label" type="text" value="" /></label>
-      <label>Title<input data-goal-field="title" type="text" value="" /></label>
-      <div class="goal-editor-grid">
-        <label>Progress Source<select data-goal-field="progressSource"></select></label>
-        <label>Importance<input data-goal-field="importance" type="number" min="1" max="5" value="" /></label>
+    <article class="goal-card goal-guide">
+      <span>Rabbit Guide</span>
+      <h3>この順番で考えると整いやすいよ</h3>
+      <div class="goal-step-list">
+        <div><b>1</b><span>Wishに「叶えたいこと」を書く</span></div>
+        <div><b>2</b><span>Outcomeに「叶った後の景色」を書く</span></div>
+        <div><b>3</b><span>Obstacleに「つまずきそうなこと」を置く</span></div>
+        <div><b>4</b><span>Planに「小さなAction」を1行ずつ書く</span></div>
       </div>
-      <label>Matrix<input data-goal-field="matrix" type="text" value="" /></label>
-      <label>Next Action<input data-goal-field="nextAction" type="text" value="" /></label>
-      <label>Vision Link<input data-goal-field="vision" type="text" value="" /></label>
-      <label>Reward<input data-goal-field="reward" type="text" value="" /></label>
-      <p class="goal-auto-note">Rabbit Question / Comment / Progress are generated from WOOP and Plan checks.</p>
-    </details>
+      <p>${getGoalQuestion(category)}</p>
+    </article>
     <details class="goal-card goal-woop" open>
-      <summary><span><b>WOOP</b><small>願いをPlanへ分解する</small></span></summary>
-      <label>Wish<textarea data-goal-field="wish" rows="2"></textarea></label>
-      <label>Outcome<textarea data-goal-field="outcome" rows="2"></textarea></label>
-      <label>Obstacle<textarea data-goal-field="obstacle" rows="2"></textarea></label>
-      <label>Plan<textarea data-goal-field="plans" rows="4"></textarea></label>
+      <summary><span><b>WOOP</b><small>願いを小さなPlanに分ける中心ノート</small></span></summary>
+      <label>Wish<span class="field-hint">叶えたいことを一文で</span><textarea data-goal-field="wish" rows="2"></textarea></label>
+      <label>Outcome<span class="field-hint">叶ったらどんな気持ち・状態になる？</span><textarea data-goal-field="outcome" rows="2"></textarea></label>
+      <label>Obstacle<span class="field-hint">邪魔になりそうなこと、つまずきそうなこと</span><textarea data-goal-field="obstacle" rows="2"></textarea></label>
+      <label>Plan<span class="field-hint">今日や今週できる小さなActionを1行ずつ</span><textarea data-goal-field="plans" rows="4"></textarea></label>
       <div class="goal-plan-checks"></div>
     </details>
+    <details class="goal-card goal-map-editor" ${desktopOpen}>
+      <summary><span><b>Map Details</b><small>地図に表示する名前・次の一歩・ごほうび</small></span></summary>
+      <label>Map Label<span class="field-hint">Life Map上の短い名前</span><input data-goal-field="label" type="text" value="" /></label>
+      <label>Goal Title<span class="field-hint">このカテゴリで目指す状態</span><input data-goal-field="title" type="text" value="" /></label>
+      <label>Next Action<span class="field-hint">Planから自動反映されます。必要なら手直しできます。</span><input data-goal-field="nextAction" type="text" value="" /></label>
+      <label>Reward<span class="field-hint">叶えたら自分にあげたいもの</span><input data-goal-field="reward" type="text" value="" /></label>
+      <label>Vision Link<span class="field-hint">関連するVisionシート名</span><input data-goal-field="vision" type="text" value="" /></label>
+      <details class="goal-advanced-settings">
+        <summary><span><b>Advanced Settings</b><small>進捗の測り方と分類</small></span></summary>
+        <div class="goal-editor-grid">
+          <label>Progress Source<select data-goal-field="progressSource"></select></label>
+          <label>Importance<input data-goal-field="importance" type="number" min="1" max="5" value="" /></label>
+        </div>
+        <label>Matrix<input data-goal-field="matrix" type="text" value="" /></label>
+      </details>
+    </details>
     <details class="goal-card goal-mandala" ${desktopOpen}>
-      <summary><span><b>Mandala</b><small>もっと細かく考える</small></span></summary>
+      <summary><span><b>Mandala</b><small>アイデアを広げたい時だけ使う</small></span></summary>
       <div class="goal-card-head">
-        <button type="button" data-goal-action="toggle-mandala">もっと細かく考える</button>
+        <button type="button" data-goal-action="toggle-mandala">マンダラチャートを開く</button>
       </div>
       <div class="mandala-grid" hidden></div>
     </details>
     <details class="goal-card goal-vision-link" ${desktopOpen}>
-      <summary><span><b>Vision</b><small>理想の景色を確認する</small></span></summary>
+      <summary><span><b>Vision</b><small>理想の景色を見返す</small></span></summary>
       <p>${category.vision}</p>
       <button type="button" data-folder="vision" data-goal-action="open-vision">Visionを開く</button>
     </details>
@@ -1983,6 +2031,27 @@ document.addEventListener("pointerup", endVisionDrag);
 
 missionChecks.forEach((check) => {
   check.addEventListener("change", () => updateGrowth(check.checked ? 30 : -30));
+});
+
+missionsWidget?.addEventListener("change", async (event) => {
+  const checkbox = event.target.closest('input[type="checkbox"][data-task-id]');
+  if (!checkbox || !currentUser) return;
+
+  checkbox.disabled = true;
+  try {
+    await updateTaskStatus({
+      userId: currentUser.id,
+      taskId: checkbox.dataset.taskId,
+      done: checkbox.checked,
+    });
+    updateGrowth(checkbox.checked ? 30 : -30);
+    await loadTaskMissions(currentUser.id);
+  } catch (error) {
+    checkbox.checked = !checkbox.checked;
+    addMessage("assistant", `Taskを更新できませんでした: ${error.message}`);
+  } finally {
+    checkbox.disabled = false;
+  }
 });
 
 homeButton.addEventListener("click", () => {
