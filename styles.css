@@ -586,6 +586,17 @@ button {
   font-weight: 800;
 }
 
+.mission span {
+  min-width: 0;
+}
+
+.mission.is-done span {
+  color: #8c89aa;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #eea9c4;
+}
+
 .mission-empty {
   margin: 10px 0 0;
   color: #8582a7;

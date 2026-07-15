@@ -59,7 +59,7 @@ export async function getCalendarEvents({ userId, days = 7 }) {
 }
 
 export async function getTodayTasks({ userId, limit = 6 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey(new Date());
 
   const { data, error } = await supabase
     .from("tasks")
@@ -72,7 +72,13 @@ export async function getTodayTasks({ userId, limit = 6 }) {
     .limit(limit);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? [])
+    .filter((task) => {
+      if (task.status !== "done") return true;
+      if (!task.completed_at) return task.due_date === today;
+      return localDateKey(new Date(task.completed_at)) === today;
+    })
+    .slice(0, limit);
 }
 
 export async function updateTaskStatus({ userId, taskId, done }) {
@@ -347,6 +353,14 @@ export async function uploadVisionImage({ userId, file }) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function localDateKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function planStartIso({ dateLabel = "today", dateValue, time = "", baseIso } = {}) {

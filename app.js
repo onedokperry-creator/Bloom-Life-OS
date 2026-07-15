@@ -130,24 +130,27 @@ const MOOD_ASSETS = {
 };
 
 const RABBIT_HOME_ICONS = [
-  "rabbit_happy.png",
-  "rabbit_heart.png",
-  "rabbit_joy.png",
-  "rabbit_glad.png",
-  "rabbit_good.png",
-  "rabbit_smile.png",
-  "rabbit_love.png",
-  "rabbit_cheer.png",
-  "rabbit_blink.png",
-  "rabbit_relax.png",
+  new URL("./assets/icons/icon/rabbit/rabbit_happy.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_heart.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_joy.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_glad.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_good.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_smile.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_love.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_cheer.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_blink.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_relax.png", import.meta.url).href,
 ];
 
 function setRandomHomeRabbitIcon() {
-  const file = RABBIT_HOME_ICONS[Math.floor(Math.random() * RABBIT_HOME_ICONS.length)];
-  const src = `assets/icons/icon/rabbit/${file}`;
+  const src = RABBIT_HOME_ICONS[Math.floor(Math.random() * RABBIT_HOME_ICONS.length)];
   document.querySelectorAll(".random-rabbit-icon").forEach((image) => {
     image.src = src;
     image.alt = "Bloom rabbit";
+    image.onerror = () => {
+      image.onerror = null;
+      image.src = RABBIT_HOME_ICONS[0];
+    };
   });
 }
 
@@ -691,13 +694,17 @@ function renderTaskMissions(tasks = []) {
   tasks.forEach((task) => {
     const label = document.createElement("label");
     label.className = "mission";
+    label.classList.toggle("is-done", task.status === "done");
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = task.status === "done";
     checkbox.dataset.taskId = task.id;
 
-    label.append(checkbox, ` ${task.title}`);
+    const title = document.createElement("span");
+    title.textContent = task.title;
+
+    label.append(checkbox, title);
     missionsWidget.append(label);
   });
 }
