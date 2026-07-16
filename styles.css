@@ -711,7 +711,12 @@ input[type="checkbox"] {
   overflow: hidden;
   border: 1px solid rgba(117, 126, 176, 0.14);
   border-radius: 18px;
-  background: #fff8f4;
+  background:
+    radial-gradient(circle at 52% 48%, rgba(199, 240, 224, 0.55) 0 18%, transparent 19%),
+    radial-gradient(circle at 22% 30%, rgba(232, 223, 255, 0.48) 0 15%, transparent 16%),
+    radial-gradient(circle at 72% 30%, rgba(255, 214, 232, 0.46) 0 14%, transparent 15%),
+    radial-gradient(circle at 28% 72%, rgba(255, 241, 207, 0.55) 0 16%, transparent 17%),
+    linear-gradient(135deg, #fff8f4 0%, #f4f2ff 56%, #eefaf6 100%);
   aspect-ratio: 3 / 2;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
@@ -800,7 +805,7 @@ input[type="checkbox"] {
   font: inherit;
   text-align: left;
   isolation: isolate;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
   box-shadow: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -823,14 +828,14 @@ input[type="checkbox"] {
 .life-area-growth { right: 9%; top: 55%; }
 
 .life-category-icon {
-  font-size: 20px;
+  font-size: 18px;
   position: relative;
   z-index: 7;
   opacity: 0.92;
 }
 
 .life-category strong {
-  font-size: 14px;
+  font-size: 13px;
   position: relative;
   z-index: 7;
 }
@@ -849,7 +854,7 @@ input[type="checkbox"] {
 .life-category[data-status="locked"] .life-category-icon,
 .life-category[data-status="locked"] strong,
 .life-category[data-status="locked"] small {
-  opacity: 0.42;
+  opacity: 0.28;
 }
 
 .life-area-scene,
@@ -960,6 +965,12 @@ input[type="checkbox"] {
 .life-category-pink { background: rgba(255, 214, 232, 0.24); }
 .life-category-cream { background: rgba(255, 241, 207, 0.28); }
 .life-category-sky { background: rgba(220, 232, 255, 0.24); }
+
+.life-category[data-status="hidden"],
+.life-category[data-status="locked"] {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: transparent;
+}
 
 .goal-overview {
   display: grid;

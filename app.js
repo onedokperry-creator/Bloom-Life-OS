@@ -281,13 +281,13 @@ const lifeMapAssets = {
     a5: "assets/lifemap/background/A5.png",
   },
   clouds: {
-    dense: "assets/lifemap/cloud/overlay%20dence.png",
-    medium: "assets/lifemap/cloud/overlay%20medium.png",
-    soft: "assets/lifemap/cloud/overlay%20soft.png",
-    light: "assets/lifemap/cloud/overlay%20light.png",
+    dense: "assets/lifemap/cloud-safe/overlay-dense.png",
+    medium: "assets/lifemap/cloud-safe/overlay-medium.png",
+    soft: "assets/lifemap/cloud-safe/overlay-soft.png",
+    light: "assets/lifemap/cloud-safe/overlay-light.png",
   },
-  locked: "assets/lifemap/decoration/marker%20locked.png",
-  sparkles: "assets/lifemap/effect/sparkles.png",
+  locked: "assets/lifemap/decoration-safe/marker-locked.png",
+  sparkles: "assets/lifemap/effect-safe/sparkles.png",
   petals: "assets/lifemap/decoration/petals%20trail.png",
 };
 
