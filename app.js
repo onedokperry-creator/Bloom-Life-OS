@@ -130,16 +130,16 @@ const MOOD_ASSETS = {
 };
 
 const RABBIT_HOME_ICONS = [
-  new URL("./assets/icons/icon/rabbit/rabbit_happy.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_heart.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_joy.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_glad.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_good.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_smile.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_love.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_cheer.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_blink.png", import.meta.url).href,
-  new URL("./assets/icons/icon/rabbit/rabbit_relax.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_happy.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_heart.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_joy.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_glad.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_good.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_smile.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_love.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_cheer.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_blink.png", import.meta.url).href,
+  new URL("./assets/icons/rabbit/rabbit_relax.png", import.meta.url).href,
 ];
 
 function setRandomHomeRabbitIcon() {
@@ -272,6 +272,25 @@ const goalProgressSourceOptions = [
   ["money-sync", "Money sync"],
 ];
 
+const lifeMapAssets = {
+  backgrounds: {
+    a1: "assets/lifemap/background/A1.png",
+    a2: "assets/lifemap/background/A2.png",
+    a3: "assets/lifemap/background/A3.png",
+    a4: "assets/lifemap/background/A4.png",
+    a5: "assets/lifemap/background/A5.png",
+  },
+  clouds: {
+    dense: "assets/lifemap/cloud/overlay%20dence.png",
+    medium: "assets/lifemap/cloud/overlay%20medium.png",
+    soft: "assets/lifemap/cloud/overlay%20soft.png",
+    light: "assets/lifemap/cloud/overlay%20light.png",
+  },
+  locked: "assets/lifemap/decoration/marker%20locked.png",
+  sparkles: "assets/lifemap/effect/sparkles.png",
+  petals: "assets/lifemap/decoration/petals%20trail.png",
+};
+
 const defaultGoalIdealDay = [
   "7:00 起床",
   "7:20 朝の支度と軽いストレッチ",
@@ -291,8 +310,16 @@ function splitGoalLines(value) {
 
 function normalizeGoalCategory(category) {
   const plans = splitGoalLines(category.woop?.plans ?? []);
+  const progress = Math.min(100, Math.max(0, Number(category.progress) || 0));
+  const hasGoalContent = Boolean(category.woop?.wish || category.woop?.outcome || category.woop?.obstacle || plans.length);
+  const inferredStatus = category.status
+    ?? (progress >= 100 ? "bloomed" : progress >= 25 ? "growing" : hasGoalContent ? "planned" : "hidden");
+  const mapStage = category.mapStage ?? inferredStatus;
   return {
     ...category,
+    status: inferredStatus,
+    mapStage,
+    isUnlocked: !["hidden", "locked"].includes(inferredStatus),
     progressSource: category.progressSource ?? "plan-checks",
     completedPlans: Array.isArray(category.completedPlans)
       ? category.completedPlans.slice(0, plans.length)
@@ -315,10 +342,11 @@ function normalizeGoalState(state) {
 
   return {
     yearTheme: state?.yearTheme || fallback.yearTheme,
-    activeCategoryId: state?.activeCategoryId || categories[0]?.id || "career",
+    activeCategoryId: state?.activeCategoryId || "",
     categories: categories.map(normalizeGoalCategory),
     recentWins: Array.isArray(state?.recentWins) ? state.recentWins : fallback.recentWins,
     idealDay: splitGoalLines(state?.idealDay ?? fallback.idealDay),
+    lastUnlockedCategoryId: state?.lastUnlockedCategoryId ?? "",
   };
 }
 
@@ -330,6 +358,56 @@ function calculateGoalProgress(category) {
   }
 
   return Math.min(100, Math.max(0, Number(category.progress) || 0));
+}
+
+function goalStatusFromProgress(category) {
+  const progress = calculateGoalProgress(category);
+  const plans = splitGoalLines(category.woop?.plans ?? []);
+  const hasWoop = Boolean(category.woop?.wish || category.woop?.outcome || category.woop?.obstacle || plans.length);
+  if (progress >= 100) return "bloomed";
+  if (progress >= 50) return "growing";
+  if (hasWoop) return "planned";
+  if (category.status === "seed") return "seed";
+  return category.status ?? "hidden";
+}
+
+function refreshGoalMapStage(category) {
+  const status = goalStatusFromProgress(category);
+  category.status = status;
+  category.mapStage = status;
+  category.isUnlocked = !["hidden", "locked"].includes(status);
+}
+
+function getLifeMapRabbitMessage(state) {
+  const unlocked = state.categories.filter((category) => !["hidden", "locked"].includes(category.status)).length;
+  if (state.lastUnlockedCategoryId) return "新しいエリアが見えてきたよ";
+  if (!unlocked) return "まずは、育てたいエリアをひとつ選ぼう";
+  return "小さな一歩が、世界を少しずつ育てるよ";
+}
+
+function getLifeMapStage(state) {
+  const categories = state.categories ?? [];
+  const unlocked = categories.filter((category) => !["hidden", "locked"].includes(category.status));
+  const progress = averageGoalProgress(categories);
+  const statuses = unlocked.map((category) => category.status);
+
+  if (!unlocked.length) return "a1";
+  if (statuses.includes("bloomed") || progress >= 90) return "a5";
+  if (statuses.includes("growing") || progress >= 50) return "a4";
+  if (statuses.includes("planned") || progress >= 25) return "a3";
+  return "a2";
+}
+
+function getLifeMapBackground(state) {
+  return lifeMapAssets.backgrounds[getLifeMapStage(state)] ?? lifeMapAssets.backgrounds.a1;
+}
+
+function getLifeMapCloud(status) {
+  if (status === "hidden") return lifeMapAssets.clouds.dense;
+  if (status === "locked") return lifeMapAssets.clouds.medium;
+  if (status === "planned") return lifeMapAssets.clouds.light;
+  if (status === "growing") return lifeMapAssets.clouds.soft;
+  return lifeMapAssets.clouds.soft;
 }
 
 function getGoalQuestion(category) {
@@ -347,35 +425,31 @@ function getGoalComment(category) {
 }
 
 function averageGoalProgress(categories) {
+  if (!categories?.length) return 0;
   return Math.round(categories.reduce((sum, category) => sum + calculateGoalProgress(category), 0) / categories.length);
 }
 
 function createDefaultGoalState() {
-  const categories = goalCategories.map((category, index) => {
-    const plans =
-      index === 0
-        ? ["求人条件を1つ調べる", "必要な貯金額をMoneyに入れる"]
-        : index === 2
-          ? ["週2回の散歩を入れる"]
-          : ["最初の一歩を1つ決める"];
-
+  const categories = goalCategories.map((category) => {
     return {
       ...category,
       title: category.title,
-      progress: [50, 0, 0, 0, 0][index],
+      status: "hidden",
+      mapStage: "hidden",
+      progress: 0,
       progressSource: "plan-checks",
-      completedPlans: plans.map((_, planIndex) => index === 0 && planIndex === 0),
-      importance: index === 0 ? 5 : index === 2 ? 4 : 3,
-      matrix: index === 0 ? "Important / Not urgent" : "Important / Gentle pace",
-      reward: index === 0 ? "韓国ワーホリ貯金 30,000円" : index === 2 ? "新しいウェア" : "小さなごほうび",
-      vision: index === 0 ? "理想の働き方ボード" : "Dream Sheet",
-      nextAction: plans[0],
+      completedPlans: [],
+      importance: 3,
+      matrix: "Important / Gentle pace",
+      reward: "",
+      vision: "",
+      nextAction: "最初の一歩を決める",
       rabbit: "",
       woop: {
-        wish: index === 0 ? "韓国に近づく働き方を作る" : "",
-        outcome: index === 0 ? "安心して挑戦できる準備が整う" : "",
-        obstacle: index === 0 ? "情報が多くて決めきれない" : "",
-        plans,
+        wish: "",
+        outcome: "",
+        obstacle: "",
+        plans: [],
       },
       idealDay: [],
       mandala: ["Theme", category.label, "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review"],
@@ -385,49 +459,10 @@ function createDefaultGoalState() {
   return {
     yearTheme: "自由に、しなやかに育つ",
     idealDay: defaultGoalIdealDay,
-    activeCategoryId: "career",
+    activeCategoryId: "",
     categories,
     recentWins: ["Visionを開いて理想を見直した", "今日の予定を整理できた"],
-  };
-
-  return {
-    yearTheme: "自由に、しなやかに育つ",
-    activeCategoryId: "career",
-    categories: goalCategories.map((category, index) => ({
-      ...category,
-      progress: [42, 28, 36, 55, 31][index],
-      importance: index === 0 ? 5 : index === 2 ? 4 : 3,
-      matrix: index === 0 ? "Important / Not urgent" : "Important / Gentle pace",
-      reward: index === 0 ? "韓国ワーホリ貯金 30,000円" : index === 2 ? "新しいウェア" : "小さなごほうび",
-      vision: index === 0 ? "理想の働き方ボード" : "Dream Sheet",
-      nextAction: index === 0 ? "求人条件を3つ書き出す" : index === 2 ? "週2回の散歩を入れる" : "10分だけ考える",
-      rabbit: `${category.label}は小さく整えるだけで前に進むよ。`,
-      woop: {
-        wish: index === 0 ? "韓国に近づく働き方を作る" : "",
-        outcome: index === 0 ? "場所に縛られず、安心して挑戦できる" : "",
-        obstacle: index === 0 ? "情報が多くて決めきれない" : "",
-        plans:
-          index === 0
-            ? ["毎週1つ、求人や制度を調べる", "必要な貯金額をMoneyに入れる"]
-            : ["最初の一歩を1つ決める"],
-      },
-      idealDay:
-        index === 0
-          ? ["7:00 起床", "英語を15分", "仕事", "夜にダンス", "22:30 就寝"]
-          : ["朝に深呼吸", "小さな行動", "夜にふりかえり"],
-      mandala: [
-        "Theme",
-        category.label,
-        "Vision",
-        "Action",
-        "Reward",
-        "Care",
-        "Habit",
-        "Money",
-        "Review",
-      ],
-    })),
-    recentWins: ["Visionを開いて理想を見直した", "今日の予定を整理できた"],
+    lastUnlockedCategoryId: "",
   };
 }
 
@@ -501,7 +536,9 @@ async function loadGoalStateFromSupabase(userId) {
 
 function activeGoalCategory() {
   const state = loadGoalState();
-  return state.categories.find((category) => category.id === state.activeCategoryId) ?? state.categories[0];
+  return state.categories.find((category) => category.id === state.activeCategoryId && !["hidden", "locked"].includes(category.status))
+    ?? state.categories.find((category) => !["hidden", "locked"].includes(category.status))
+    ?? null;
 }
 
 function showApp(user) {
@@ -1092,6 +1129,8 @@ function renderIdealDayList(container, lines) {
 function renderGoalsFolder() {
   const state = loadGoalState();
   const active = activeGoalCategory();
+  const mapStage = getLifeMapStage(state);
+  const mapBackground = getLifeMapBackground(state);
   const shell = document.createElement("section");
   shell.className = "goals-workspace";
   shell.innerHTML = `
@@ -1100,12 +1139,17 @@ function renderGoalsFolder() {
       <textarea class="goal-theme-input" data-goal-field="yearTheme" rows="2"></textarea>
       <p>Bloom Rabbit asks: 今年、一番叶えたいことは？</p>
     </section>
-    <section class="life-map">
-      <div class="life-map-center">
-        <small>Life Map</small>
-        <strong></strong>
+    <section class="life-map" data-stage="${mapStage}">
+      <div class="life-map-board">
+        <img class="life-map-background" src="${mapBackground}" alt="" />
+        <img class="life-map-complete-effect" src="${lifeMapAssets.sparkles}" alt="" />
+        <div class="life-map-center" data-status="seed">
+          <small>Bloom Tree</small>
+          <strong></strong>
+          <p>${getLifeMapRabbitMessage(state)}</p>
+        </div>
+        <div class="life-map-categories"></div>
       </div>
-      <div class="life-map-categories"></div>
     </section>
     <section class="goal-overview">
       <article>
@@ -1142,21 +1186,44 @@ function renderGoalsFolder() {
 
   const categoryList = shell.querySelector(".life-map-categories");
   state.categories.forEach((category) => {
+    const status = category.status ?? "hidden";
+    const unlocked = !["hidden", "locked"].includes(status);
     const button = document.createElement("button");
-    button.className = `life-category life-category-${category.tone} ${category.id === active.id ? "is-active" : ""}`;
+    button.className = `life-category life-area-${category.id} life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""} ${category.id === state.lastUnlockedCategoryId ? "is-unlocking" : ""}`;
     button.type = "button";
-    button.dataset.goalAction = "select-category";
+    button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
     button.dataset.categoryId = category.id;
+    button.dataset.status = status;
+    button.dataset.mapStage = category.mapStage ?? status;
+    button.setAttribute("aria-label", unlocked ? `${category.label}を開く` : `${category.label}エリアを解放する`);
     button.innerHTML = `
-      <span>${category.icon}</span>
+      <span class="life-category-icon">${category.icon}</span>
       <strong>${category.label}</strong>
-      <small>${category.title}</small>
-      <i style="width: ${calculateGoalProgress(category)}%"></i>
+      <small>${unlocked ? category.title : "未発見エリア"}</small>
+      <div class="life-area-scene" aria-hidden="true">
+        <span class="life-area-path"></span>
+        <span class="life-area-building"></span>
+        <span class="life-area-sprout"></span>
+        <span class="life-area-sparkle">✦</span>
+      </div>
+      <img class="life-map-lock" src="${lifeMapAssets.locked}" alt="" />
+      <img class="life-map-cloud" src="${getLifeMapCloud(status)}" alt="" />
+      <img class="life-map-unlock-sparkle" src="${lifeMapAssets.sparkles}" alt="" />
     `;
     categoryList.append(button);
   });
 
-  shell.querySelector(".goal-detail").append(renderGoalDetail(active));
+  if (active) {
+    shell.querySelector(".goal-detail").append(renderGoalDetail(active));
+  } else {
+    shell.querySelector(".goal-detail").innerHTML = `
+      <article class="goal-card goal-empty-map">
+        <span>Rabbit</span>
+        <h3>最初のエリアを作る</h3>
+        <p class="rabbit-comment">雲の下に、まだ見えていない場所があるよ。育てたいエリアをひとつ選んでみよう。</p>
+      </article>
+    `;
+  }
   return shell;
 }
 
@@ -1792,8 +1859,31 @@ function handleGoalAction(button) {
   const action = button.dataset.goalAction;
   const state = loadGoalState();
 
+  if (action === "unlock-category") {
+    const category = state.categories.find((item) => item.id === button.dataset.categoryId);
+    if (!category) return;
+    category.status = "seed";
+    category.mapStage = "seed";
+    category.isUnlocked = true;
+    state.activeCategoryId = category.id;
+    state.lastUnlockedCategoryId = category.id;
+    saveGoalState();
+    renderFolder("goals");
+    window.setTimeout(() => {
+      const latest = loadGoalState();
+      if (latest.lastUnlockedCategoryId === category.id) {
+        latest.lastUnlockedCategoryId = "";
+        saveGoalState({ sync: false });
+      }
+    }, 1100);
+    addMessage("assistant", "新しいエリアが見えてきたよ");
+    return;
+  }
+
   if (action === "select-category") {
-    state.activeCategoryId = button.dataset.categoryId;
+    const category = state.categories.find((item) => item.id === button.dataset.categoryId);
+    if (!category || ["hidden", "locked"].includes(category.status)) return;
+    state.activeCategoryId = category.id;
     saveGoalState();
     renderFolder("goals");
   }
@@ -1832,6 +1922,7 @@ function saveGoalField(field) {
   const key = field.dataset.goalField;
   if (key === "wish" || key === "outcome" || key === "obstacle") {
     category.woop[key] = field.value.trim();
+    refreshGoalMapStage(category);
   }
 
   if (key === "plans") {
@@ -1841,6 +1932,7 @@ function saveGoalField(field) {
       .filter(Boolean);
     category.completedPlans = category.woop.plans.map((_, index) => Boolean(category.completedPlans?.[index]));
     category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
+    refreshGoalMapStage(category);
     renderGoalPlanChecks(field.closest(".goal-woop")?.querySelector(".goal-plan-checks"), category);
   }
 
@@ -1851,10 +1943,12 @@ function saveGoalField(field) {
   if (key === "completedPlan") {
     category.completedPlans ??= [];
     category.completedPlans[Number(field.dataset.index)] = field.checked;
+    refreshGoalMapStage(category);
   }
 
   if (key === "progress") {
     category.progress = Math.min(100, Math.max(0, Number(field.value) || 0));
+    refreshGoalMapStage(category);
   }
 
   if (key === "importance") {
