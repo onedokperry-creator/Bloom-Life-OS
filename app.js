@@ -105,6 +105,7 @@ const authMessage = document.querySelector("#authMessage");
 const signupButton = document.querySelector("#signupButton");
 const logoutButton = document.querySelector("#logoutButton");
 const userEmail = document.querySelector("#userEmail");
+const homeLifeMap = document.querySelector("#homeLifeMap");
 
 let draft = null;
 let exp = 2350;
@@ -489,6 +490,7 @@ function loadGoalState() {
 function saveGoalState({ sync = true } = {}) {
   if (!goalState) return;
   localStorage.setItem(goalStorageKey(), JSON.stringify(goalState));
+  renderHomeLifeMap();
   if (sync) queueGoalSupabaseSave();
 }
 
@@ -525,6 +527,7 @@ async function loadGoalStateFromSupabase(userId) {
       idealDay: data.ideal_day ?? createDefaultGoalState().idealDay,
     });
     localStorage.setItem(goalStorageKey(), JSON.stringify(goalState));
+    renderHomeLifeMap();
 
     if (!folderWindow.hidden && folderTitle.textContent === "Goals") renderFolder("goals");
   } catch (error) {
@@ -546,6 +549,7 @@ function showApp(user) {
   authScreen.hidden = true;
   appShell.hidden = false;
   if (userEmail) userEmail.textContent = user.email ?? "Signed in";
+  renderHomeLifeMap();
   loadGoalStateFromSupabase(user.id);
   loadCalendarEvents(user.id);
   loadTaskMissions(user.id);
@@ -1126,6 +1130,8 @@ function renderIdealDayList(container, lines) {
 }
 
 function renderGoalsFolder() {
+  return renderGoalsFolderV2();
+
   const state = loadGoalState();
   const active = activeGoalCategory();
   const mapStage = getLifeMapStage(state);
@@ -1370,6 +1376,236 @@ function renderGoalPlanChecks(container, category) {
     label.querySelector("span").textContent = plan;
     container.append(label);
   });
+}
+
+function renderLifeMapBoard(state, { mode = "home" } = {}) {
+  const active = activeGoalCategory();
+  const mapStage = getLifeMapStage(state);
+  const mapBackground = getLifeMapBackground(state);
+  const section = document.createElement("section");
+  section.className = `life-map life-map-${mode}`;
+  section.dataset.stage = mapStage;
+  section.innerHTML = `
+    <div class="life-map-heading">
+      <div>
+        <span>Life Map</span>
+        <strong></strong>
+      </div>
+      ${mode === "home" ? '<button type="button" data-folder="goals" data-goal-action="open-goals">Edit Goals</button>' : ""}
+    </div>
+    <div class="life-map-board">
+      <img class="life-map-background" src="${mapBackground}" alt="" />
+      <img class="life-map-complete-effect" src="${lifeMapAssets.sparkles}" alt="" />
+      <div class="life-map-center" data-status="seed">
+        <small>Bloom</small>
+      </div>
+      <div class="life-map-categories"></div>
+    </div>
+  `;
+
+  section.querySelector(".life-map-heading strong").textContent = state.yearTheme;
+  const categoryList = section.querySelector(".life-map-categories");
+  state.categories.forEach((category) => {
+    const status = category.status ?? "hidden";
+    const unlocked = !["hidden", "locked"].includes(status);
+    const button = document.createElement("button");
+    button.className = `life-category life-area-${category.id} life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""} ${category.id === state.lastUnlockedCategoryId ? "is-unlocking" : ""}`;
+    button.type = "button";
+    button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    button.dataset.categoryId = category.id;
+    button.dataset.status = status;
+    button.dataset.mapStage = category.mapStage ?? status;
+    button.setAttribute("aria-label", unlocked ? `${category.label}を開く` : `${category.label}エリアを育て始める`);
+    button.innerHTML = `
+      <span class="life-category-pin">
+        <span class="life-category-icon">${category.icon}</span>
+        <strong>${category.label}</strong>
+      </span>
+      <img class="life-map-lock" src="${lifeMapAssets.locked}" alt="" />
+      <img class="life-map-cloud" src="${getLifeMapCloud(status)}" alt="" />
+      <img class="life-map-unlock-sparkle" src="${lifeMapAssets.sparkles}" alt="" />
+    `;
+    categoryList.append(button);
+  });
+
+  return section;
+}
+
+function renderHomeLifeMap() {
+  if (!homeLifeMap || !currentUser) return;
+  const state = loadGoalState();
+  homeLifeMap.innerHTML = "";
+  homeLifeMap.append(renderLifeMapBoard(state, { mode: "home" }));
+}
+
+function renderGoalsFolderV2() {
+  const state = loadGoalState();
+  const active = activeGoalCategory();
+  const shell = document.createElement("section");
+  shell.className = "goals-workspace goals-workspace-simple";
+  shell.innerHTML = `
+    <section class="goal-theme-card">
+      <span>2026 Theme</span>
+      <textarea class="goal-theme-input" data-goal-field="yearTheme" rows="2"></textarea>
+      <p>まずは今年の方向を決めます。毎日の実行はTask、景色はVision、ここでは人生の設計図を整えます。</p>
+    </section>
+    <section class="goal-category-picker">
+      <div class="goal-section-title">
+        <span>Areas</span>
+        <h3>育てるエリアを選ぶ</h3>
+      </div>
+      <div class="goal-category-list"></div>
+    </section>
+    <section class="goal-overview">
+      <article>
+        <span>Progress</span>
+        <strong>${averageGoalProgress(state.categories)}%</strong>
+      </article>
+      <article>
+        <span>Recent Wins</span>
+        <p></p>
+      </article>
+      <article>
+        <span>Bloom Note</span>
+        <p>方向を決める場所と、実行する場所は分けて大丈夫。ここでは迷った時に戻れる地図を作ります。</p>
+      </article>
+    </section>
+    <section class="goal-detail"></section>
+    <section class="goal-card goal-ideal-planner">
+      <div class="goal-card-head">
+        <div>
+          <span>Ideal Day</span>
+          <h3>1日の設計</h3>
+        </div>
+      </div>
+      <div class="ideal-day-list"></div>
+      <label class="goal-soft-editor">Edit Ideal Day<textarea data-goal-field="idealDayGlobal" rows="5"></textarea></label>
+    </section>
+  `;
+
+  shell.querySelector(".goal-theme-input").value = state.yearTheme;
+  shell.querySelector(".goal-overview p").textContent = state.recentWins.join(" / ");
+  shell.querySelector('[data-goal-field="idealDayGlobal"]').value = state.idealDay.join("\n");
+  renderIdealDayList(shell.querySelector(".goal-ideal-planner .ideal-day-list"), state.idealDay);
+
+  const categoryList = shell.querySelector(".goal-category-list");
+  state.categories.forEach((category) => {
+    const status = category.status ?? "hidden";
+    const unlocked = !["hidden", "locked"].includes(status);
+    const button = document.createElement("button");
+    button.className = `goal-area-chip life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
+    button.type = "button";
+    button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    button.dataset.categoryId = category.id;
+    button.dataset.status = status;
+    button.innerHTML = `
+      <span class="life-category-icon">${category.icon}</span>
+      <strong>${category.label}</strong>
+      <small>${unlocked ? category.title : "未設定"}</small>
+    `;
+    categoryList.append(button);
+  });
+
+  const detail = shell.querySelector(".goal-detail");
+  if (active) {
+    detail.append(renderGoalDetailV2(active));
+  } else {
+    detail.innerHTML = `
+      <article class="goal-card goal-empty-map">
+        <span>Start</span>
+        <h3>最初のエリアを選ぶ</h3>
+        <p class="rabbit-comment">Career、Money、Health、Joy、Growthから、今いちばん育てたい場所をひとつ選んでね。</p>
+      </article>
+    `;
+  }
+
+  return shell;
+}
+
+function renderGoalDetailV2(category) {
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-detail-simple";
+  detail.dataset.categoryId = category.id;
+  detail.innerHTML = `
+    <article class="goal-card goal-card-main">
+      <div class="goal-card-head">
+        <div>
+          <span>${category.icon} ${category.label}</span>
+          <h3>${category.title}</h3>
+        </div>
+        <div class="goal-stars" aria-label="Importance">${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</div>
+      </div>
+      <p class="rabbit-comment">${getGoalComment(category)}</p>
+      <div class="goal-progress"><i style="width: ${calculateGoalProgress(category)}%"></i></div>
+      <div class="goal-card-meta">
+        <span>Progress: ${calculateGoalProgress(category)}%</span>
+        <span>Next: ${category.nextAction}</span>
+      </div>
+      <div class="goal-editor-grid">
+        <label>Area Name<input data-goal-field="title" type="text" value="" /></label>
+        <label>Next Action<input data-goal-field="nextAction" type="text" value="" /></label>
+      </div>
+    </article>
+    <details class="goal-card goal-woop" open>
+      <summary><span><b>Goal Design</b><small>願いを小さなPlanに分ける</small></span></summary>
+      <label>Wish<span class="field-hint">叶えたいことを一文で</span><textarea data-goal-field="wish" rows="2"></textarea></label>
+      <label>Outcome<span class="field-hint">叶った後に見たい景色・気持ち</span><textarea data-goal-field="outcome" rows="2"></textarea></label>
+      <label>Obstacle<span class="field-hint">つまずきそうなこと、迷いそうなこと</span><textarea data-goal-field="obstacle" rows="2"></textarea></label>
+      <label>Plan<span class="field-hint">今日か今週できる小さなActionを1行ずつ</span><textarea data-goal-field="plans" rows="4"></textarea></label>
+      <div class="goal-plan-checks"></div>
+    </details>
+    <details class="goal-card goal-progress-settings">
+      <summary><span><b>Progress</b><small>Planの完了で進捗が育ちます</small></span></summary>
+      <div class="goal-editor-grid">
+        <label>Progress Source<select data-goal-field="progressSource"></select></label>
+        <label>Importance<input data-goal-field="importance" type="number" min="1" max="5" value="" /></label>
+      </div>
+      <label>Reward<input data-goal-field="reward" type="text" value="" /></label>
+      <label>Vision Link<input data-goal-field="vision" type="text" value="" /></label>
+      <label>Matrix<input data-goal-field="matrix" type="text" value="" /></label>
+    </details>
+    <details class="goal-card goal-mandala">
+      <summary><span><b>Mandala</b><small>アイデアを広げたい時だけ使う</small></span></summary>
+      <div class="goal-card-head">
+        <button type="button" data-goal-action="toggle-mandala">マンダラチャートを開く</button>
+      </div>
+      <div class="mandala-grid" hidden></div>
+    </details>
+  `;
+
+  detail.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
+  detail.querySelector('[data-goal-field="outcome"]').value = category.woop.outcome;
+  detail.querySelector('[data-goal-field="obstacle"]').value = category.woop.obstacle;
+  detail.querySelector('[data-goal-field="plans"]').value = category.woop.plans.join("\n");
+  detail.querySelector('[data-goal-field="title"]').value = category.title;
+  detail.querySelector('[data-goal-field="importance"]').value = category.importance;
+  detail.querySelector('[data-goal-field="matrix"]').value = category.matrix;
+  detail.querySelector('[data-goal-field="nextAction"]').value = category.nextAction;
+  detail.querySelector('[data-goal-field="vision"]').value = category.vision;
+  detail.querySelector('[data-goal-field="reward"]').value = category.reward;
+
+  const progressSource = detail.querySelector('[data-goal-field="progressSource"]');
+  goalProgressSourceOptions.forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === category.progressSource;
+    progressSource.append(option);
+  });
+
+  renderGoalPlanChecks(detail.querySelector(".goal-plan-checks"), category);
+
+  const mandalaGrid = detail.querySelector(".mandala-grid");
+  category.mandala.forEach((cell, index) => {
+    const box = document.createElement("textarea");
+    box.dataset.goalField = "mandala";
+    box.dataset.index = String(index);
+    box.rows = 2;
+    box.value = cell;
+    mandalaGrid.append(box);
+  });
+
+  return detail;
 }
 
 function renderCalendarEditor(event) {
@@ -1858,6 +2094,11 @@ function handleGoalAction(button) {
   const action = button.dataset.goalAction;
   const state = loadGoalState();
 
+  if (action === "open-goals") {
+    renderFolder("goals");
+    return;
+  }
+
   if (action === "unlock-category") {
     const category = state.categories.find((item) => item.id === button.dataset.categoryId);
     if (!category) return;
@@ -2110,6 +2351,11 @@ folderContent.addEventListener("click", (event) => {
   if (visionButton) {
     handleVisionAction(visionButton);
   }
+});
+
+homeLifeMap?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-goal-action]");
+  if (button) handleGoalAction(button);
 });
 
 folderContent.addEventListener("input", (event) => {

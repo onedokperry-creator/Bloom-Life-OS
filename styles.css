@@ -2710,3 +2710,301 @@ input[type="checkbox"] {
     padding-inline: 22px;
   }
 }
+
+/* Life Map renewal: the map is a status widget, not a form canvas. */
+.home-life-map-shell {
+  margin: 0 0 12px;
+}
+
+.home-life-map-shell:empty {
+  display: none;
+}
+
+.life-map-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 0 2px;
+}
+
+.life-map-heading span,
+.goal-section-title span {
+  display: block;
+  color: #777da8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.life-map-heading strong,
+.goal-section-title h3 {
+  display: block;
+  margin: 2px 0 0;
+  color: #4d527a;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.life-map-heading button {
+  border: 1px solid rgba(117, 126, 176, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #5f668e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 12px;
+}
+
+.home-life-map-shell .life-map {
+  padding: 12px;
+}
+
+.life-map-home .life-map-board {
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+.life-map-center {
+  display: none;
+}
+
+.life-category {
+  width: 15%;
+  height: 12%;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.life-category:not([data-status="hidden"]):not([data-status="locked"]):hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.life-category-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px;
+  max-width: 112px;
+  padding: 4px 7px;
+  border: 1px solid rgba(117, 126, 176, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  color: #50577d;
+  box-shadow: 0 8px 16px rgba(92, 83, 130, 0.08);
+  backdrop-filter: blur(3px);
+  transform: translate(-50%, -50%);
+}
+
+.life-category-pin strong {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.life-category-pin .life-category-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.life-category small,
+.life-area-scene {
+  display: none;
+}
+
+.life-category[data-status="hidden"] .life-category-pin,
+.life-category[data-status="locked"] .life-category-pin {
+  opacity: 0;
+}
+
+.life-map-lock {
+  width: 24px;
+  height: 24px;
+}
+
+.life-map-cloud {
+  inset: -58% -62%;
+  width: 220%;
+  height: 220%;
+}
+
+.life-area-career { left: 28%; top: 24%; }
+.life-area-money { left: 24%; top: 56%; }
+.life-area-health { left: 71%; top: 26%; }
+.life-area-life { left: 49%; top: 69%; }
+.life-area-growth { left: 69%; top: 57%; }
+
+.goal-category-picker {
+  padding: 14px;
+  border: 1px solid rgba(117, 126, 176, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 14px 26px rgba(92, 83, 130, 0.09);
+}
+
+.goal-category-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.goal-area-chip {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px 8px;
+  min-width: 0;
+  border: 1px solid rgba(117, 126, 176, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #50577d;
+  font: inherit;
+  text-align: left;
+  padding: 10px;
+}
+
+.goal-area-chip .life-category-icon {
+  grid-row: 1 / 3;
+  font-size: 18px;
+}
+
+.goal-area-chip strong,
+.goal-area-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-area-chip strong {
+  font-size: 14px;
+}
+
+.goal-area-chip small {
+  color: #777da8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.goal-area-chip.is-active {
+  outline: 2px solid rgba(117, 126, 176, 0.32);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.goal-detail-simple {
+  gap: 10px;
+}
+
+.goal-progress-settings,
+.goal-mandala {
+  background: rgba(255, 255, 255, 0.56);
+}
+
+@media (max-width: 429px) {
+  .home-life-map-shell {
+    margin-bottom: 10px;
+  }
+
+  .home-life-map-shell .life-map {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .life-map-heading {
+    margin-bottom: 7px;
+  }
+
+  .life-map-heading strong {
+    font-size: 14px;
+  }
+
+  .life-map-heading button {
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .life-map-home .life-map-board {
+    aspect-ratio: 1 / 0.84;
+    border-radius: 16px;
+  }
+
+  .life-category-pin {
+    max-width: 86px;
+    padding: 3px 6px;
+  }
+
+  .life-category-pin strong {
+    font-size: 9px;
+  }
+
+  .life-category-pin .life-category-icon {
+    font-size: 11px;
+  }
+
+  .goal-category-list {
+    grid-template-columns: 1fr;
+  }
+
+  .goals-workspace-simple {
+    overflow: visible;
+  }
+
+  .goal-overview {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .goal-ideal-planner .ideal-day-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .home-life-map-shell {
+    grid-column: 3;
+    grid-row: 2;
+    margin: 0;
+  }
+
+  .home-life-map-shell .life-map {
+    min-height: 0;
+  }
+
+  .life-map-home .life-map-board {
+    aspect-ratio: 1 / 0.8;
+  }
+
+  .goals-workspace-simple {
+    grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.35fr);
+  }
+
+  .goals-workspace-simple .goal-theme-card,
+  .goals-workspace-simple .goal-category-picker,
+  .goals-workspace-simple .goal-overview,
+  .goals-workspace-simple .goal-ideal-planner {
+    grid-column: 1;
+  }
+
+  .goals-workspace-simple .goal-detail {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+  }
+
+  .goal-detail-simple {
+    grid-template-columns: 1fr;
+  }
+}
