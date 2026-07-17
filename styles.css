@@ -3828,6 +3828,168 @@ input[type="checkbox"] {
   gap: 9px;
 }
 
+.goal-game-detail > .goal-mandala-teaser {
+  display: none;
+}
+
+.goal-village-overview {
+  animation: goalVillageIn 0.45s ease both;
+}
+
+@keyframes goalVillageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.goal-current-building img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.goal-village-stage {
+  position: relative;
+  z-index: 1;
+  margin: -4px 0 0;
+  color: #6c73a0;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.goal-overview-block {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid rgba(117, 126, 176, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.goal-overview-block strong {
+  color: #4f557d;
+  font-size: clamp(17px, 4vw, 22px);
+  line-height: 1.45;
+}
+
+.goal-overview-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.goal-overview-actions button:not(.goal-grow-button),
+.goal-editor-head button {
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid rgba(117, 126, 176, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #626894;
+  font: inherit;
+  font-weight: 900;
+}
+
+.goal-hidden-editor {
+  display: block;
+}
+
+.goal-hidden-editor .goal-woop {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.goal-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-editor-head h3 {
+  margin: 3px 0 0;
+  color: #4d527a;
+}
+
+.goal-conversation-card {
+  padding: clamp(18px, 4vw, 30px);
+  border: 1px solid rgba(117, 126, 176, 0.16);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(199, 240, 224, 0.52), transparent 34%),
+    linear-gradient(135deg, rgba(255, 249, 239, 0.96), rgba(246, 241, 255, 0.95));
+  box-shadow: 0 16px 32px rgba(92, 83, 130, 0.1);
+  animation: goalVillageIn 0.45s ease both;
+}
+
+.goal-conversation-scene {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid rgba(117, 126, 176, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.goal-conversation-scene img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(92, 83, 130, 0.14));
+}
+
+.goal-conversation-scene span,
+.goal-conversation-question > span {
+  color: #777da8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goal-conversation-scene p {
+  margin: 4px 0 0;
+  color: #4d527a;
+  font-size: clamp(17px, 4vw, 22px);
+  font-weight: 900;
+  line-height: 1.5;
+}
+
+.goal-conversation-question h2 {
+  margin: 5px 0 12px;
+  color: #454b72;
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1.2;
+}
+
+.goal-conversation-question textarea {
+  width: 100%;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid rgba(117, 126, 176, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #4f557d;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.55;
+  resize: vertical;
+}
+
 .goal-design-card {
   display: grid;
   min-width: 0;
@@ -3923,5 +4085,23 @@ input[type="checkbox"] {
   .goal-current-meta,
   .goal-status-cards {
     grid-template-columns: 1fr;
+  }
+
+  .goal-overview-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-overview-actions button:not(.goal-grow-button) {
+    min-height: 44px;
+  }
+
+  .goal-conversation-scene {
+    grid-template-columns: 56px 1fr;
+    padding: 12px;
+  }
+
+  .goal-conversation-scene img {
+    width: 56px;
+    height: 56px;
   }
 }

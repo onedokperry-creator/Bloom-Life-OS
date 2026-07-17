@@ -114,6 +114,7 @@ let currentUser = null;
 let editingCalendarEventId = null;
 let goalWizardState = null;
 let goalMandalaCategoryId = "";
+let goalWoopEditCategoryId = "";
 let visionState = {
   boards: [],
   activeBoardId: null,
@@ -1240,7 +1241,7 @@ function renderGoalsFolder() {
     const button = document.createElement("button");
     button.className = `life-category life-area-${category.id} life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""} ${category.id === state.lastUnlockedCategoryId ? "is-unlocking" : ""}`;
     button.type = "button";
-    button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    button.dataset.goalAction = unlocked ? "select-category" : "preview-category";
     button.dataset.categoryId = category.id;
     button.dataset.status = status;
     button.dataset.mapStage = category.mapStage ?? status;
@@ -1787,6 +1788,44 @@ function getGoalShortWish(category) {
   return category.woop?.wish || category.title || `${category.label}を少しずつ育てる`;
 }
 
+function getGoalVillageName(category) {
+  return {
+    career: "Career Village",
+    money: "Money Garden",
+    health: "Health Cottage",
+    life: "Joy Park",
+    growth: "Growth Library",
+  }[category.id] || `${category.label} Village`;
+}
+
+function getGoalStageCopy(category) {
+  const progress = calculateGoalProgress(category);
+  if (progress >= 100) return "村が完成しました";
+  if (progress >= 90) return "住人と光が集まっています";
+  if (progress >= 60) return "噴水やベンチが増えました";
+  if (progress >= 30) return "花と看板が見えてきました";
+  if (category.woop?.wish || splitGoalLines(category.woop?.plans ?? []).length) return "小さなお家が建ちました";
+  return "まだ小さな土地です";
+}
+
+function getGoalMandalaSeeds(category) {
+  const seeds = {
+    career: ["韓国で働く", "会社", "働き方", "スキル", "英語", "韓国語", "生活", "お金", "価値観"],
+    money: ["安心して暮らす", "収入", "支出", "予算", "貯金", "ごほうび", "固定費", "イベント", "資産"],
+    health: ["整った体づくり", "睡眠", "食事", "運動", "美容", "休息", "通院", "メンタル", "習慣"],
+    life: ["好きで満たす", "友達", "家族", "趣味", "ダンス", "旅", "写真", "時間", "思い出"],
+    growth: ["内側を育てる", "読書", "学習", "英語", "記録", "振り返り", "相談", "休む力", "自信"],
+  };
+  return seeds[category.id] ?? ["Theme", category.label, "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review"];
+}
+
+function ensureGoalMandalaSeeds(category) {
+  const current = Array.isArray(category.mandala) ? category.mandala : [];
+  const genericWords = new Set(["Theme", "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review", category.label]);
+  const looksGeneric = current.length < 9 || current.filter((item) => item && !genericWords.has(item)).length <= 2;
+  if (looksGeneric) category.mandala = getGoalMandalaSeeds(category);
+}
+
 function renderGoalStatusCards(category) {
   const cards = document.createElement("section");
   cards.className = "goal-status-cards";
@@ -1849,7 +1888,7 @@ function renderGoalAreaStrip(state, active) {
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = `goal-area-tile life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
-    tile.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    tile.dataset.goalAction = unlocked ? "select-category" : "preview-category";
     tile.dataset.categoryId = category.id;
     tile.innerHTML = `
       <span class="goal-area-tile-icon">${category.icon}</span>
@@ -1859,6 +1898,78 @@ function renderGoalAreaStrip(state, active) {
     strip.append(tile);
   });
   return strip;
+}
+
+function renderGoalVillageOverview(category) {
+  const progress = calculateGoalProgress(category);
+  const decoration = getLifeMapDecoration(category.status ?? "seed");
+  const area = document.createElement("section");
+  area.className = `goal-current-area goal-village-overview life-category-${category.tone}`;
+  area.dataset.categoryId = category.id;
+  area.innerHTML = `
+    <div class="goal-current-head">
+      <div class="goal-current-building" aria-hidden="true">${decoration ? `<img src="${decoration}" alt="" />` : category.icon}</div>
+      <div>
+        <span>Area Overview</span>
+        <h3>${safeGoalText(getGoalVillageName(category))}</h3>
+        <p>${safeGoalText(category.title)}</p>
+      </div>
+      <strong>Lv.${getGoalLevel(category)}</strong>
+    </div>
+    <p class="goal-village-stage">${safeGoalText(getGoalStageCopy(category))}</p>
+    <section class="goal-overview-block">
+      <span>現在の目標</span>
+      <strong>${safeGoalText(category.woop?.wish, "まだ目標は決まっていません")}</strong>
+    </section>
+    <section class="goal-overview-block">
+      <span>次のAction</span>
+      <strong>${safeGoalText(getGoalPrimaryPlan(category))}</strong>
+    </section>
+    <div class="goal-current-progress">
+      <span>進行率 ${progress}%</span>
+      <i><b style="width:${progress}%"></b></i>
+    </div>
+    <dl class="goal-current-meta">
+      <div><dt>Stars</dt><dd>${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</dd></div>
+      <div><dt>Stage</dt><dd>${safeGoalText(category.status ?? "seed")}</dd></div>
+      <div><dt>Reward</dt><dd>${safeGoalText(category.reward, "まだ未設定")}</dd></div>
+      <div><dt>Vision</dt><dd>${safeGoalText(category.vision, "Dream Sheet")}</dd></div>
+    </dl>
+    <div class="goal-overview-actions">
+      <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">育てる</button>
+      <button type="button" data-goal-action="edit-woop" data-category-id="${category.id}">編集</button>
+      <button type="button" data-goal-action="open-mandala" data-category-id="${category.id}">Mandala</button>
+    </div>
+  `;
+  return area;
+}
+
+function renderGoalHiddenEditor(category) {
+  const editor = document.createElement("section");
+  editor.className = "goal-hidden-editor goal-detail-grid";
+  editor.dataset.categoryId = category.id;
+  editor.innerHTML = `
+    <article class="goal-card goal-woop" open>
+      <div class="goal-editor-head">
+        <div>
+          <span>WOOP Editor</span>
+          <h3>必要な時だけ細かく編集</h3>
+        </div>
+        <button type="button" data-goal-action="close-woop">閉じる</button>
+      </div>
+      <label>Wish<textarea data-goal-field="wish" rows="2"></textarea></label>
+      <label>Outcome<textarea data-goal-field="outcome" rows="2"></textarea></label>
+      <label>Obstacle<textarea data-goal-field="obstacle" rows="2"></textarea></label>
+      <label>Plan<textarea data-goal-field="plans" rows="4"></textarea></label>
+      <div class="goal-plan-checks"></div>
+    </article>
+  `;
+  editor.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
+  editor.querySelector('[data-goal-field="outcome"]').value = category.woop.outcome;
+  editor.querySelector('[data-goal-field="obstacle"]').value = category.woop.obstacle;
+  editor.querySelector('[data-goal-field="plans"]').value = category.woop.plans.join("\n");
+  renderGoalPlanChecks(editor.querySelector(".goal-plan-checks"), category);
+  return editor;
 }
 
 function renderGoalWizardV3(category) {
@@ -1903,6 +2014,71 @@ function renderGoalWizardV3(category) {
   return detail;
 }
 
+function renderGoalRabbitConversation(category) {
+  const wizard = goalWizardState;
+  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
+  const step = goalWizardSteps[stepIndex];
+  const prompts = [
+    {
+      eyebrow: "Welcome",
+      rabbit: `${getGoalVillageName(category)}へようこそ。今日は少しだけ、この村を育てよう。`,
+      question: "今年、ここで一番叶えたいことは？",
+      placeholder: "例：韓国で働ける仕事を見つける",
+    },
+    {
+      eyebrow: "Future",
+      rabbit: "いいね。それが叶った後の毎日を、少しだけ想像してみよう。",
+      question: "叶ったら、どんな毎日になる？",
+      placeholder: "例：安心して挑戦できて、好きな場所で働けている",
+    },
+    {
+      eyebrow: "Cloud",
+      rabbit: "途中で曇りそうな場所も、先に見つけておけば大丈夫。",
+      question: "邪魔になりそうなことは？",
+      placeholder: "例：情報が多すぎて、何から見ればいいか迷う",
+    },
+    {
+      eyebrow: "Small Action",
+      rabbit: "じゃあ今日できることを、一つだけ置こう。小さくていいよ。",
+      question: "今日か今週、何をひとつ進める？",
+      placeholder: "例：求人条件を1件調べる",
+    },
+  ];
+  const prompt = prompts[stepIndex];
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-wizard goal-rabbit-conversation";
+  detail.dataset.categoryId = category.id;
+  detail.innerHTML = `
+    <article class="goal-conversation-card">
+      <div class="goal-wizard-top">
+        <button type="button" data-goal-action="cancel-goal-wizard">← 村へ戻る</button>
+        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
+      </div>
+      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
+      <div class="goal-conversation-scene">
+        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
+        <div>
+          <span>Bloom Rabbit</span>
+          <p>${prompt.rabbit}</p>
+        </div>
+      </div>
+      <div class="goal-conversation-question">
+        <span>${prompt.eyebrow}</span>
+        <h2>${prompt.question}</h2>
+        <textarea data-goal-wizard-input rows="4" placeholder="${prompt.placeholder}"></textarea>
+        <p class="goal-wizard-error" aria-live="polite"></p>
+      </div>
+      <div class="goal-wizard-actions">
+        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
+        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? `${getGoalVillageName(category)}を育てる ✨` : "次へ"}</button>
+      </div>
+    </article>
+  `;
+  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
+  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
+  return detail;
+}
+
 function renderGoalsFolderV3() {
   const state = loadGoalState();
   const active = activeGoalCategory();
@@ -1912,7 +2088,6 @@ function renderGoalsFolderV3() {
     <section class="goal-game-theme">
       <span>2026 Theme</span>
       <strong>${safeGoalText(state.yearTheme)}</strong>
-      <textarea data-goal-field="yearTheme" rows="2">${safeGoalText(state.yearTheme)}</textarea>
     </section>
     <section class="goal-game-map-slot"></section>
     <section class="goal-game-areas">
@@ -1945,15 +2120,15 @@ function renderGoalsFolderV3() {
   }
 
   if (goalWizardState?.categoryId === active.id) {
-    current.append(renderGoalWizardV3(active));
+    current.append(renderGoalRabbitConversation(active));
     return shell;
   }
 
   const detail = document.createElement("div");
   detail.className = "goal-detail-grid goal-game-detail";
   detail.dataset.categoryId = active.id;
-  detail.append(renderGoalCurrentArea(active));
-  detail.append(renderGoalStatusCards(active));
+  detail.append(renderGoalVillageOverview(active));
+  if (goalWoopEditCategoryId === active.id) detail.append(renderGoalHiddenEditor(active));
   detail.insertAdjacentHTML("beforeend", `
     <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${active.id}">
       <span>✨ もっとアイデアを広げたい？</span>
@@ -2460,6 +2635,7 @@ function handleGoalAction(button) {
     if (!category) return;
     goalWizardState = null;
     goalMandalaCategoryId = "";
+    goalWoopEditCategoryId = "";
     category.status = "seed";
     category.mapStage = "seed";
     category.isUnlocked = true;
@@ -2478,11 +2654,24 @@ function handleGoalAction(button) {
     return;
   }
 
+  if (action === "preview-category") {
+    const category = state.categories.find((item) => item.id === button.dataset.categoryId);
+    if (!category) return;
+    goalWizardState = null;
+    goalMandalaCategoryId = "";
+    goalWoopEditCategoryId = "";
+    state.activeCategoryId = category.id;
+    saveGoalState({ sync: false });
+    renderFolder("goals");
+    return;
+  }
+
   if (action === "select-category") {
     const category = state.categories.find((item) => item.id === button.dataset.categoryId);
     if (!category || ["hidden", "locked"].includes(category.status)) return;
     goalWizardState = null;
     goalMandalaCategoryId = "";
+    goalWoopEditCategoryId = "";
     state.activeCategoryId = category.id;
     saveGoalState();
     renderFolder("goals");
@@ -2493,6 +2682,7 @@ function handleGoalAction(button) {
     const category = state.categories.find((item) => item.id === button.dataset.categoryId);
     if (!category) return;
     goalMandalaCategoryId = "";
+    goalWoopEditCategoryId = "";
     if (["hidden", "locked"].includes(category.status ?? "hidden")) {
       category.status = "seed";
       category.mapStage = "seed";
@@ -2517,6 +2707,20 @@ function handleGoalAction(button) {
 
   if (action === "cancel-goal-wizard") {
     goalWizardState = null;
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "edit-woop") {
+    goalWizardState = null;
+    goalMandalaCategoryId = "";
+    goalWoopEditCategoryId = button.dataset.categoryId;
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "close-woop") {
+    goalWoopEditCategoryId = "";
     renderFolder("goals");
     return;
   }
@@ -2560,17 +2764,25 @@ function handleGoalAction(button) {
     category.woop.plans = goalWizardState.drafts.plans;
     category.completedPlans = category.woop.plans.map((_, index) => Boolean(category.completedPlans?.[index]));
     category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
+    category.reward ||= category.id === "career" ? "韓国ワーホリ貯金" : "";
+    category.vision ||= category.id === "career" ? "理想の働き方ボード" : "Dream Sheet";
     refreshGoalMapStage(category);
     state.activeCategoryId = category.id;
     goalWizardState = null;
     saveGoalState();
     renderFolder("goals");
-    addMessage("assistant", `${category.label}に新しい道ができたよ。`);
+    addMessage("assistant", `${getGoalVillageName(category)}に新しいお家が建ちました✨`);
     return;
   }
 
   if (action === "open-mandala") {
+    const category = state.categories.find((item) => item.id === button.dataset.categoryId);
+    if (category) {
+      ensureGoalMandalaSeeds(category);
+      saveGoalState();
+    }
     goalWizardState = null;
+    goalWoopEditCategoryId = "";
     goalMandalaCategoryId = button.dataset.categoryId;
     renderFolder("goals");
     return;
