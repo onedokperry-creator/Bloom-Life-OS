@@ -4105,3 +4105,101 @@ input[type="checkbox"] {
     height: 56px;
   }
 }
+
+/* Mobile Life Map polish: keep the map inside the window and make labels quiet. */
+.goals-game .goal-game-map-slot,
+.goals-game .life-map,
+.goals-game .life-map-board {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.goals-game .life-map-board {
+  width: 100%;
+  height: auto;
+  min-height: 0 !important;
+  max-height: none;
+  aspect-ratio: 3 / 2;
+  background: linear-gradient(135deg, #eef7ff 0%, #fff8f3 54%, #f5efff 100%);
+}
+
+.goals-game .life-map-background {
+  object-fit: contain !important;
+  object-position: center;
+}
+
+.goals-game .life-category,
+.goals-game .life-category:not([data-status="hidden"]):not([data-status="locked"]):hover,
+.goals-game .life-category.is-active {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.goals-game .life-category-pin {
+  display: block;
+  max-width: 96px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(80, 87, 125, 0.7);
+  text-align: center;
+  text-shadow: 0 1px 5px rgba(255, 255, 255, 0.9);
+  backdrop-filter: none;
+}
+
+.goals-game .life-category-pin .life-category-icon {
+  display: none;
+}
+
+.goals-game .life-category-pin strong {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .goals-game .life-map {
+    padding: 8px;
+  }
+
+  .goals-game .life-map-board {
+    aspect-ratio: 3 / 2;
+    border-radius: 16px;
+  }
+
+  .goals-game .life-category-pin {
+    max-width: 72px;
+  }
+
+  .goals-game .life-category-pin strong {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 429px) {
+  .goals-game .life-map-heading strong {
+    font-size: 18px;
+  }
+
+  .goals-game .life-map-board {
+    aspect-ratio: 3 / 2;
+  }
+
+  .goals-game .life-category-pin {
+    max-width: 58px;
+  }
+
+  .goals-game .life-category-pin strong {
+    font-size: 9px;
+  }
+}
