@@ -289,6 +289,12 @@ const lifeMapAssets = {
   },
   locked: new URL("./assets/lifemap/decoration/marker locked.png", import.meta.url).href,
   sparkles: new URL("./assets/lifemap/effect/sparkles.png", import.meta.url).href,
+  decorations: {
+    seed: new URL("./assets/lifemap/background/H6.png", import.meta.url).href,
+    planned: new URL("./assets/lifemap/background/H4.png", import.meta.url).href,
+    growing: new URL("./assets/lifemap/background/H5.png", import.meta.url).href,
+    bloomed: new URL("./assets/lifemap/background/H14.png", import.meta.url).href,
+  },
 };
 
 const defaultGoalIdealDay = [
@@ -408,6 +414,42 @@ function getLifeMapCloud(status) {
   if (status === "planned") return lifeMapAssets.clouds.light;
   if (status === "growing") return lifeMapAssets.clouds.soft;
   return lifeMapAssets.clouds.soft;
+}
+
+function getLifeMapDecoration(status) {
+  if (status === "bloomed") return lifeMapAssets.decorations.bloomed;
+  if (status === "growing") return lifeMapAssets.decorations.growing;
+  if (status === "planned") return lifeMapAssets.decorations.planned;
+  if (status === "seed") return lifeMapAssets.decorations.seed;
+  return "";
+}
+
+function getGoalSummaryStats(state) {
+  const categories = state.categories ?? [];
+  const unlocked = categories.filter((category) => !["hidden", "locked"].includes(category.status)).length;
+  const plans = categories.flatMap((category) => splitGoalLines(category.woop?.plans ?? []));
+  const done = categories.reduce((sum, category) => sum + (category.completedPlans ?? []).filter(Boolean).length, 0);
+  return { unlocked, plans: plans.length, done };
+}
+
+function getGoalRecentWins(state) {
+  const wins = [];
+  (state.categories ?? []).forEach((category) => {
+    splitGoalLines(category.woop?.plans ?? []).forEach((plan, index) => {
+      if (category.completedPlans?.[index]) wins.push(`${category.label}: ${plan}`);
+    });
+  });
+  return wins.slice(-3).reverse();
+}
+
+function getGoalNextActions(state) {
+  const actions = [];
+  (state.categories ?? []).forEach((category) => {
+    splitGoalLines(category.woop?.plans ?? []).forEach((plan, index) => {
+      if (!category.completedPlans?.[index]) actions.push(`${category.label}: ${plan}`);
+    });
+  });
+  return actions.slice(0, 3);
 }
 
 function getGoalQuestion(category) {
@@ -1416,7 +1458,9 @@ function renderLifeMapBoard(state, { mode = "home" } = {}) {
     button.dataset.status = status;
     button.dataset.mapStage = category.mapStage ?? status;
     button.setAttribute("aria-label", unlocked ? `${category.label}を開く` : `${category.label}エリアを育て始める`);
+    const decoration = getLifeMapDecoration(status);
     button.innerHTML = `
+      ${decoration ? `<img class="life-map-decoration" src="${decoration}" alt="" />` : ""}
       <span class="life-category-pin">
         <span class="life-category-icon">${category.icon}</span>
         <strong>${category.label}</strong>
@@ -1441,6 +1485,9 @@ function renderHomeLifeMap() {
 function renderGoalsFolderV2() {
   const state = loadGoalState();
   const active = activeGoalCategory();
+  const stats = getGoalSummaryStats(state);
+  const recentWins = getGoalRecentWins(state);
+  const nextActions = getGoalNextActions(state);
   const shell = document.createElement("section");
   shell.className = "goals-workspace goals-workspace-simple";
   shell.innerHTML = `
@@ -1460,14 +1507,11 @@ function renderGoalsFolderV2() {
       <article>
         <span>Progress</span>
         <strong>${averageGoalProgress(state.categories)}%</strong>
+        <p>${stats.unlocked}/5 areas, ${stats.done}/${stats.plans} plans done</p>
       </article>
       <article>
-        <span>Recent Wins</span>
+        <span>${recentWins.length ? "Recent Wins" : "Next Actions"}</span>
         <p></p>
-      </article>
-      <article>
-        <span>Bloom Note</span>
-        <p>方向を決める場所と、実行する場所は分けて大丈夫。ここでは迷った時に戻れる地図を作ります。</p>
       </article>
     </section>
     <section class="goal-detail"></section>
@@ -1484,7 +1528,8 @@ function renderGoalsFolderV2() {
   `;
 
   shell.querySelector(".goal-theme-input").value = state.yearTheme;
-  shell.querySelector(".goal-overview p").textContent = state.recentWins.join(" / ");
+  shell.querySelector(".goal-overview article:nth-child(2) p").textContent =
+    (recentWins.length ? recentWins : nextActions).join(" / ") || "Planを入力するとここに次の一歩が表示されます。";
   shell.querySelector('[data-goal-field="idealDayGlobal"]').value = state.idealDay.join("\n");
   renderIdealDayList(shell.querySelector(".goal-ideal-planner .ideal-day-list"), state.idealDay);
 
@@ -2207,6 +2252,7 @@ function saveGoalField(field) {
   }
 
   saveGoalState();
+  if (key === "completedPlan") renderFolder("goals");
 }
 
 authForm.addEventListener("submit", async (event) => {
