@@ -4203,3 +4203,99 @@ input[type="checkbox"] {
     font-size: 9px;
   }
 }
+
+/* Life Map MVP: one whole-world stage image from A1-A5. */
+.life-map-home .life-map-board,
+.goals-game .life-map-board {
+  aspect-ratio: 3 / 2 !important;
+  min-height: 0 !important;
+}
+
+.life-map-home .life-map-background,
+.goals-game .life-map-background {
+  object-fit: contain !important;
+  object-position: center;
+}
+
+.life-map-background-previous {
+  z-index: 0;
+}
+
+.life-map-background-next {
+  z-index: 1;
+  opacity: 0;
+  animation: lifeMapStageReveal 0.9s ease-out 0.18s both;
+}
+
+.life-map-stage-cloud {
+  position: absolute;
+  inset: -8%;
+  z-index: 6;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+  pointer-events: none;
+  animation: lifeMapStageCloudClear 0.9s ease-out both;
+}
+
+.life-map.is-map-growing .life-map-complete-effect {
+  z-index: 7;
+  opacity: 0;
+  animation: lifeMapStageSparkle 1.1s ease-out 0.12s both;
+}
+
+.life-map .life-category-pin {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(80, 87, 125, 0.68);
+  text-shadow: 0 1px 5px rgba(255, 255, 255, 0.92);
+  backdrop-filter: none;
+}
+
+.life-map .life-category-pin .life-category-icon,
+.life-map .life-map-lock,
+.life-map .life-map-cloud,
+.life-map .life-map-unlock-sparkle,
+.life-map .life-map-decoration {
+  display: none !important;
+}
+
+@keyframes lifeMapStageCloudClear {
+  0% {
+    opacity: 0.88;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.04);
+    filter: blur(3px);
+  }
+}
+
+@keyframes lifeMapStageReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lifeMapStageSparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  35% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}

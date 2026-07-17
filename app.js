@@ -356,17 +356,19 @@ function normalizeGoalState(state) {
     recentWins: Array.isArray(state?.recentWins) ? state.recentWins : fallback.recentWins,
     idealDay: splitGoalLines(state?.idealDay ?? fallback.idealDay),
     lastUnlockedCategoryId: state?.lastUnlockedCategoryId ?? "",
+    mapTransition: state?.mapTransition ?? null,
   };
 }
 
 function calculateGoalProgress(category) {
   const plans = splitGoalLines(category.woop?.plans ?? []);
+  const manualProgress = Math.min(100, Math.max(0, Number(category.progress) || 0));
   if (category.progressSource === "plan-checks" && plans.length) {
     const done = (category.completedPlans ?? []).filter(Boolean).length;
-    return Math.round((done / plans.length) * 100);
+    return Math.max(manualProgress, Math.round((done / plans.length) * 100));
   }
 
-  return Math.min(100, Math.max(0, Number(category.progress) || 0));
+  return manualProgress;
 }
 
 function goalStatusFromProgress(category) {
@@ -396,15 +398,17 @@ function getLifeMapRabbitMessage(state) {
 
 function getLifeMapStage(state) {
   const categories = state.categories ?? [];
-  const unlocked = categories.filter((category) => !["hidden", "locked"].includes(category.status));
   const progress = averageGoalProgress(categories);
-  const statuses = unlocked.map((category) => category.status);
 
-  if (!unlocked.length) return "a1";
-  if (statuses.includes("bloomed") || progress >= 90) return "a5";
-  if (statuses.includes("growing") || progress >= 50) return "a4";
-  if (statuses.includes("planned") || progress >= 25) return "a3";
-  return "a2";
+  if (progress >= 80) return "a5";
+  if (progress >= 60) return "a4";
+  if (progress >= 40) return "a3";
+  if (progress >= 20) return "a2";
+  return "a1";
+}
+
+function getLifeMapStageRank(stage) {
+  return ["a1", "a2", "a3", "a4", "a5"].indexOf(stage);
 }
 
 function getLifeMapBackground(state) {
@@ -549,7 +553,8 @@ async function saveGoalStateToSupabase() {
   if (!currentUser || !goalState) return;
 
   try {
-    await upsertGoalLifeMap({ userId: currentUser.id, goalMap: goalState });
+    const { mapTransition: _mapTransition, ...goalMap } = goalState;
+    await upsertGoalLifeMap({ userId: currentUser.id, goalMap });
   } catch (error) {
     addMessage("assistant", `GoalsをSupabaseへ保存できませんでした: ${error.message}`);
   }
@@ -1427,8 +1432,11 @@ function renderLifeMapBoard(state, { mode = "home" } = {}) {
   const active = activeGoalCategory();
   const mapStage = getLifeMapStage(state);
   const mapBackground = getLifeMapBackground(state);
+  const transition = state.mapTransition;
+  const isMapGrowing = transition?.to === mapStage && Number(transition?.until) > Date.now();
+  const previousBackground = isMapGrowing ? lifeMapAssets.backgrounds[transition.from] : "";
   const section = document.createElement("section");
-  section.className = `life-map life-map-${mode}`;
+  section.className = `life-map life-map-${mode} ${isMapGrowing ? "is-map-growing" : ""}`;
   section.dataset.stage = mapStage;
   section.innerHTML = `
     <div class="life-map-heading">
@@ -1439,7 +1447,9 @@ function renderLifeMapBoard(state, { mode = "home" } = {}) {
       ${mode === "home" ? '<button type="button" data-folder="goals" data-goal-action="open-goals">Edit Goals</button>' : ""}
     </div>
     <div class="life-map-board">
-      <img class="life-map-background" src="${mapBackground}" alt="" />
+      ${previousBackground ? `<img class="life-map-background life-map-background-previous" src="${previousBackground}" alt="" />` : ""}
+      <img class="life-map-background ${isMapGrowing ? "life-map-background-next" : ""}" src="${mapBackground}" alt="" />
+      ${isMapGrowing ? `<img class="life-map-stage-cloud" src="${lifeMapAssets.clouds.dense}" alt="" />` : ""}
       <img class="life-map-complete-effect" src="${lifeMapAssets.sparkles}" alt="" />
       <div class="life-map-center" data-status="seed">
         <small>Bloom</small>
@@ -1461,16 +1471,10 @@ function renderLifeMapBoard(state, { mode = "home" } = {}) {
     button.dataset.status = status;
     button.dataset.mapStage = category.mapStage ?? status;
     button.setAttribute("aria-label", unlocked ? `${category.label}を開く` : `${category.label}エリアを育て始める`);
-    const decoration = getLifeMapDecoration(status);
     button.innerHTML = `
-      ${decoration ? `<img class="life-map-decoration" src="${decoration}" alt="" />` : ""}
       <span class="life-category-pin">
-        <span class="life-category-icon">${category.icon}</span>
         <strong>${category.label}</strong>
       </span>
-      <img class="life-map-lock" src="${lifeMapAssets.locked}" alt="" />
-      <img class="life-map-cloud" src="${getLifeMapCloud(status)}" alt="" />
-      <img class="life-map-unlock-sparkle" src="${lifeMapAssets.sparkles}" alt="" />
     `;
     categoryList.append(button);
   });
@@ -2758,6 +2762,7 @@ function handleGoalAction(button) {
       return;
     }
 
+    const previousStage = getLifeMapStage(state);
     category.woop.wish = goalWizardState.drafts.wish;
     category.woop.outcome = goalWizardState.drafts.outcome;
     category.woop.obstacle = goalWizardState.drafts.obstacle;
@@ -2766,12 +2771,29 @@ function handleGoalAction(button) {
     category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
     category.reward ||= category.id === "career" ? "韓国ワーホリ貯金" : "";
     category.vision ||= category.id === "career" ? "理想の働き方ボード" : "Dream Sheet";
+    category.progress = Math.max(Number(category.progress) || 0, 20);
     refreshGoalMapStage(category);
+    const nextStage = getLifeMapStage(state);
+    if (getLifeMapStageRank(nextStage) > getLifeMapStageRank(previousStage)) {
+      state.mapTransition = {
+        from: previousStage,
+        to: nextStage,
+        until: Date.now() + 1200,
+      };
+    }
     state.activeCategoryId = category.id;
     goalWizardState = null;
     saveGoalState();
     renderFolder("goals");
-    addMessage("assistant", `${getGoalVillageName(category)}に新しいお家が建ちました✨`);
+    addMessage("assistant", state.mapTransition ? "世界が少し育ったよ" : `${getGoalVillageName(category)}が少し育ったよ`);
+    if (state.mapTransition) {
+      window.setTimeout(() => {
+        const latest = loadGoalState();
+        latest.mapTransition = null;
+        saveGoalState({ sync: false });
+        if (!folderWindow.hidden && folderTitle.textContent === "Goals") renderFolder("goals");
+      }, 1250);
+    }
     return;
   }
 
