@@ -130,16 +130,16 @@ const MOOD_ASSETS = {
 };
 
 const RABBIT_HOME_ICONS = [
-  new URL("./assets/icons/rabbit/rabbit_happy.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_heart.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_joy.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_glad.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_good.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_smile.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_love.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_cheer.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_blink.png", import.meta.url).href,
-  new URL("./assets/icons/rabbit/rabbit_relax.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_happy.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_heart.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_joy.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_glad.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_good.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_smile.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_love.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_cheer.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_blink.png", import.meta.url).href,
+  new URL("./assets/icons/icon/rabbit/rabbit_relax.png", import.meta.url).href,
 ];
 
 function setRandomHomeRabbitIcon() {
@@ -274,21 +274,20 @@ const goalProgressSourceOptions = [
 
 const lifeMapAssets = {
   backgrounds: {
-    a1: "assets/lifemap/background/A1.png",
-    a2: "assets/lifemap/background/A2.png",
-    a3: "assets/lifemap/background/A3.png",
-    a4: "assets/lifemap/background/A4.png",
-    a5: "assets/lifemap/background/A5.png",
+    a1: new URL("./assets/lifemap/background/A1.png", import.meta.url).href,
+    a2: new URL("./assets/lifemap/background/A2.png", import.meta.url).href,
+    a3: new URL("./assets/lifemap/background/A3.png", import.meta.url).href,
+    a4: new URL("./assets/lifemap/background/A4.png", import.meta.url).href,
+    a5: new URL("./assets/lifemap/background/A5.png", import.meta.url).href,
   },
   clouds: {
-    dense: "assets/lifemap/cloud-safe/overlay-dense.png",
-    medium: "assets/lifemap/cloud-safe/overlay-medium.png",
-    soft: "assets/lifemap/cloud-safe/overlay-soft.png",
-    light: "assets/lifemap/cloud-safe/overlay-light.png",
+    dense: new URL("./assets/lifemap/cloud-safe/overlay-dense.png", import.meta.url).href,
+    medium: new URL("./assets/lifemap/cloud-safe/overlay-medium.png", import.meta.url).href,
+    soft: new URL("./assets/lifemap/cloud-safe/overlay-soft.png", import.meta.url).href,
+    light: new URL("./assets/lifemap/cloud-safe/overlay-light.png", import.meta.url).href,
   },
-  locked: "assets/lifemap/decoration-safe/marker-locked.png",
-  sparkles: "assets/lifemap/effect-safe/sparkles.png",
-  petals: "assets/lifemap/decoration/petals%20trail.png",
+  locked: new URL("./assets/lifemap/decoration-safe/marker-locked.png", import.meta.url).href,
+  sparkles: new URL("./assets/lifemap/effect-safe/sparkles.png", import.meta.url).href,
 };
 
 const defaultGoalIdealDay = [
