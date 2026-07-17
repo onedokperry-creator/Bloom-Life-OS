@@ -112,6 +112,8 @@ let exp = 2350;
 let saving = 32600;
 let currentUser = null;
 let editingCalendarEventId = null;
+let goalWizardState = null;
+let goalMandalaCategoryId = "";
 let visionState = {
   boards: [],
   activeBoardId: null,
@@ -1172,7 +1174,7 @@ function renderIdealDayList(container, lines) {
 }
 
 function renderGoalsFolder() {
-  return renderGoalsFolderV2();
+  return renderGoalsFolderV3();
 
   const state = loadGoalState();
   const active = activeGoalCategory();
@@ -1482,73 +1484,77 @@ function renderHomeLifeMap() {
   homeLifeMap.append(renderLifeMapBoard(state, { mode: "home" }));
 }
 
+const goalWizardSteps = [
+  { key: "wish", eyebrow: "Step 1 · Wish", rabbit: "まずは願いを書こう！", question: "今年、一番叶えたいことは？", placeholder: "例：韓国に近づく働き方をつくる" },
+  { key: "outcome", eyebrow: "Step 2 · Outcome", rabbit: "叶ったあとの景色を見てみよう。", question: "叶ったら、どんな毎日になっている？", placeholder: "例：安心しながら、新しい挑戦を楽しんでいる" },
+  { key: "obstacle", eyebrow: "Step 3 · Obstacle", rabbit: "先につまずきを知っておけば大丈夫。", question: "途中で止まりそうなのは、どんな時？", placeholder: "例：情報が多すぎて、選べなくなる時" },
+  { key: "plans", eyebrow: "Step 4 · Plan", rabbit: "最後に、小さな一歩を置こう！", question: "今日か今週、何から始める？", placeholder: "例：求人条件を1件調べる" },
+];
+
+function safeGoalText(value, fallback = "") {
+  const text = String(value ?? "").trim() || fallback;
+  return text.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+  })[character]);
+}
+
+function getGoalLevel(category) {
+  return Math.max(1, Math.min(5, 1 + Math.floor(calculateGoalProgress(category) / 25)));
+}
+
+function renderGoalAreaCard(category, active) {
+  const progress = calculateGoalProgress(category);
+  const unlocked = !["hidden", "locked"].includes(category.status ?? "hidden");
+  const button = document.createElement("button");
+  button.className = `goal-world-card life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
+  button.type = "button";
+  button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+  button.dataset.categoryId = category.id;
+  button.innerHTML = `
+    <span class="goal-world-icon">${category.icon}</span>
+    <span class="goal-world-copy">
+      <strong>${category.label}</strong>
+      <small>Lv.${getGoalLevel(category)} · 完成率 ${progress}%</small>
+      <span class="goal-world-next">${safeGoalText(category.nextAction, "最初の一歩を決める")}</span>
+    </span>
+    <span class="goal-world-enter">▶ 入る</span>
+  `;
+  return button;
+}
+
 function renderGoalsFolderV2() {
   const state = loadGoalState();
   const active = activeGoalCategory();
-  const stats = getGoalSummaryStats(state);
-  const recentWins = getGoalRecentWins(state);
-  const nextActions = getGoalNextActions(state);
   const shell = document.createElement("section");
-  shell.className = "goals-workspace goals-workspace-simple";
+  shell.className = "goals-workspace goals-world";
   shell.innerHTML = `
-    <section class="goal-theme-card">
-      <span>2026 Theme</span>
-      <textarea class="goal-theme-input" data-goal-field="yearTheme" rows="2"></textarea>
-      <p>まずは今年の方向を決めます。毎日の実行はTask、景色はVision、ここでは人生の設計図を整えます。</p>
+    <section class="goal-world-theme">
+      <span>Theme · 2026</span>
+      <strong>${safeGoalText(state.yearTheme)}</strong>
     </section>
-    <section class="goal-category-picker">
-      <div class="goal-section-title">
-        <span>Areas</span>
-        <h3>育てるエリアを選ぶ</h3>
+    <section class="goal-world-map-slot"></section>
+    <section class="goal-rabbit-chat">
+      <img src="${RABBIT_HOME_ICONS[0]}" alt="Bloom Rabbit" />
+      <div>
+        <span>Bloom Rabbit</span>
+        <p>${active ? `${active.label}を少し育ててみる？` : "今年は、どんな世界を育てたい？"}</p>
       </div>
-      <div class="goal-category-list"></div>
     </section>
-    <section class="goal-overview">
-      <article>
-        <span>Progress</span>
-        <strong>${averageGoalProgress(state.categories)}%</strong>
-        <p>${stats.unlocked}/5 areas, ${stats.done}/${stats.plans} plans done</p>
-      </article>
-      <article>
-        <span>${recentWins.length ? "Recent Wins" : "Next Actions"}</span>
-        <p></p>
-      </article>
+    <section class="goal-world-areas">
+      <div class="goal-section-title">
+        <span>Grow an area</span>
+        <h3>育てるエリア</h3>
+      </div>
+      <div class="goal-world-area-grid"></div>
     </section>
     <section class="goal-detail"></section>
-    <section class="goal-card goal-ideal-planner">
-      <div class="goal-card-head">
-        <div>
-          <span>Ideal Day</span>
-          <h3>1日の設計</h3>
-        </div>
-      </div>
-      <div class="ideal-day-list"></div>
-      <label class="goal-soft-editor">Edit Ideal Day<textarea data-goal-field="idealDayGlobal" rows="5"></textarea></label>
-    </section>
   `;
 
-  shell.querySelector(".goal-theme-input").value = state.yearTheme;
-  shell.querySelector(".goal-overview article:nth-child(2) p").textContent =
-    (recentWins.length ? recentWins : nextActions).join(" / ") || "Planを入力するとここに次の一歩が表示されます。";
-  shell.querySelector('[data-goal-field="idealDayGlobal"]').value = state.idealDay.join("\n");
-  renderIdealDayList(shell.querySelector(".goal-ideal-planner .ideal-day-list"), state.idealDay);
+  shell.querySelector(".goal-world-map-slot").append(renderLifeMapBoard(state, { mode: "goals" }));
 
-  const categoryList = shell.querySelector(".goal-category-list");
+  const categoryList = shell.querySelector(".goal-world-area-grid");
   state.categories.forEach((category) => {
-    const status = category.status ?? "hidden";
-    const unlocked = !["hidden", "locked"].includes(status);
-    const button = document.createElement("button");
-    button.className = `goal-area-chip life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
-    button.type = "button";
-    button.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
-    button.dataset.categoryId = category.id;
-    button.dataset.status = status;
-    button.innerHTML = `
-      <span class="life-category-icon">${category.icon}</span>
-      <strong>${category.label}</strong>
-      <small>${unlocked ? category.title : "未設定"}</small>
-    `;
-    categoryList.append(button);
+    categoryList.append(renderGoalAreaCard(category, active));
   });
 
   const detail = shell.querySelector(".goal-detail");
@@ -1557,9 +1563,9 @@ function renderGoalsFolderV2() {
   } else {
     detail.innerHTML = `
       <article class="goal-card goal-empty-map">
-        <span>Start</span>
-        <h3>最初のエリアを選ぶ</h3>
-        <p class="rabbit-comment">Career、Money、Health、Joy、Growthから、今いちばん育てたい場所をひとつ選んでね。</p>
+        <span>Choose an area</span>
+        <h3>マップから、気になる場所へ</h3>
+        <p class="rabbit-comment">全部を決めなくて大丈夫。今いちばん気になるエリアを、ひとつだけ選んでみよう。</p>
       </article>
     `;
   }
@@ -1568,6 +1574,8 @@ function renderGoalsFolderV2() {
 }
 
 function renderGoalDetailV2(category) {
+  return renderGoalExperience(category);
+
   const detail = document.createElement("div");
   detail.className = "goal-detail-grid goal-detail-simple";
   detail.dataset.categoryId = category.id;
@@ -1651,6 +1659,309 @@ function renderGoalDetailV2(category) {
   });
 
   return detail;
+}
+
+function renderGoalExperience(category) {
+  if (goalMandalaCategoryId === category.id) return renderGoalMandalaScreen(category);
+  if (goalWizardState?.categoryId === category.id) return renderGoalWizard(category);
+
+  const detail = document.createElement("div");
+  const progress = calculateGoalProgress(category);
+  const summaryItems = [
+    ["Wish", category.woop.wish, "まだ願いは書かれていません"],
+    ["Outcome", category.woop.outcome, "叶った景色を考えてみよう"],
+    ["Obstacle", category.woop.obstacle, "つまずきそうな場面を考えてみよう"],
+    ["Plan", category.woop.plans[0], "最初の一歩を決めよう"],
+  ];
+  detail.className = "goal-detail-grid goal-area-view";
+  detail.dataset.categoryId = category.id;
+  detail.innerHTML = `
+    <article class="goal-area-hero life-category-${category.tone}">
+      <div class="goal-area-hero-top">
+        <span class="goal-area-building">${category.icon}</span>
+        <div>
+          <span>現在のエリア</span>
+          <h2>${category.label}</h2>
+          <p>${safeGoalText(category.title)}</p>
+        </div>
+        <strong>Lv.${getGoalLevel(category)}</strong>
+      </div>
+      <div class="goal-area-rating" aria-label="大切さ ${category.importance} / 5">${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</div>
+      <p class="goal-area-wish">「${safeGoalText(category.woop.wish, `${category.label}で育てたいことを見つけよう`)}」</p>
+      <div class="goal-progress"><i style="width: ${progress}%"></i></div>
+      <div class="goal-area-next">
+        <span>次の一歩</span>
+        <strong>${safeGoalText(category.nextAction, "最初の一歩を決める")}</strong>
+      </div>
+      <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">▶ このエリアを育てる</button>
+      <div class="goal-area-extras">
+        ${category.reward ? `<span>Reward · ${safeGoalText(category.reward)}</span>` : ""}
+        ${category.vision ? `<span>Vision · ${safeGoalText(category.vision)}</span>` : ""}
+      </div>
+    </article>
+    <section class="goal-summary-grid"></section>
+    <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${category.id}">
+      <span>✨ もっとアイデアを広げたい？</span>
+      <strong>マンダラチャートを開く →</strong>
+    </button>
+  `;
+
+  const summaryGrid = detail.querySelector(".goal-summary-grid");
+  summaryItems.forEach(([label, value, fallback]) => {
+    const card = document.createElement("article");
+    card.className = `goal-summary-card ${value ? "has-value" : ""}`;
+    card.innerHTML = `<span>${label}</span><p>${safeGoalText(value, fallback)}</p>`;
+    summaryGrid.append(card);
+  });
+
+  return detail;
+}
+
+function renderGoalWizard(category) {
+  const wizard = goalWizardState;
+  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
+  const step = goalWizardSteps[stepIndex];
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-wizard";
+  detail.dataset.categoryId = category.id;
+  detail.innerHTML = `
+    <article class="goal-wizard-card">
+      <div class="goal-wizard-top">
+        <button type="button" data-goal-action="cancel-goal-wizard">← マップへ</button>
+        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
+      </div>
+      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
+      <div class="goal-wizard-rabbit">
+        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
+        <div><span>Bloom Rabbit</span><p>${step.rabbit}</p></div>
+      </div>
+      <div class="goal-wizard-question">
+        <span>${step.eyebrow}</span>
+        <h2>${step.question}</h2>
+        <textarea data-goal-wizard-input rows="4" placeholder="${step.placeholder}"></textarea>
+        <p class="goal-wizard-error" aria-live="polite"></p>
+      </div>
+      <div class="goal-wizard-actions">
+        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
+        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? "マップを育てる ✨" : "次へ"}</button>
+      </div>
+    </article>
+  `;
+  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
+  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
+  return detail;
+}
+
+function renderGoalMandalaScreen(category) {
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-mandala-screen";
+  detail.dataset.categoryId = category.id;
+  detail.innerHTML = `
+    <article class="goal-card goal-mandala" open>
+      <div class="goal-mandala-screen-head">
+        <button type="button" data-goal-action="close-mandala">← ${category.label}へ</button>
+        <div><span>Mandala</span><h3>アイデアを広げる</h3></div>
+      </div>
+      <div class="mandala-grid"></div>
+    </article>
+  `;
+  const mandalaGrid = detail.querySelector(".mandala-grid");
+  category.mandala.forEach((cell, index) => {
+    const box = document.createElement("textarea");
+    box.dataset.goalField = "mandala";
+    box.dataset.index = String(index);
+    box.rows = 2;
+    box.value = cell;
+    mandalaGrid.append(box);
+  });
+  return detail;
+}
+
+function getGoalPrimaryPlan(category) {
+  const plans = splitGoalLines(category.woop?.plans ?? []);
+  const openPlan = plans.find((_, index) => !category.completedPlans?.[index]);
+  return openPlan || category.nextAction || "最初の一歩を決める";
+}
+
+function getGoalShortWish(category) {
+  return category.woop?.wish || category.title || `${category.label}を少しずつ育てる`;
+}
+
+function renderGoalStatusCards(category) {
+  const cards = document.createElement("section");
+  cards.className = "goal-status-cards";
+  const rows = [
+    ["Wish", category.woop?.wish, "叶えたいことはまだ空っぽ"],
+    ["Outcome", category.woop?.outcome, "叶った後の景色を置く"],
+    ["Obstacle", category.woop?.obstacle, "つまずきそうなことを置く"],
+    ["Plan", splitGoalLines(category.woop?.plans ?? []).join(" / "), "小さなActionを置く"],
+  ];
+  rows.forEach(([label, value, fallback], index) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `goal-design-card ${value ? "has-value" : ""}`;
+    card.dataset.goalAction = "start-goal-wizard";
+    card.dataset.categoryId = category.id;
+    card.dataset.step = String(index);
+    card.innerHTML = `<span>${label}</span><p>${safeGoalText(value, fallback)}</p>`;
+    cards.append(card);
+  });
+  return cards;
+}
+
+function renderGoalCurrentArea(category) {
+  const progress = calculateGoalProgress(category);
+  const area = document.createElement("section");
+  area.className = `goal-current-area life-category-${category.tone}`;
+  area.dataset.categoryId = category.id;
+  area.innerHTML = `
+    <div class="goal-current-head">
+      <div class="goal-current-building" aria-hidden="true">${category.icon}</div>
+      <div>
+        <span>Current Area</span>
+        <h3>${safeGoalText(category.label)}</h3>
+        <p>${safeGoalText(category.title)}</p>
+      </div>
+      <strong>Lv.${getGoalLevel(category)}</strong>
+    </div>
+    <p class="goal-current-wish">「${safeGoalText(getGoalShortWish(category))}」</p>
+    <div class="goal-current-progress">
+      <span>完成率 ${progress}%</span>
+      <i><b style="width:${progress}%"></b></i>
+    </div>
+    <dl class="goal-current-meta">
+      <div><dt>Stars</dt><dd>${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</dd></div>
+      <div><dt>Next</dt><dd>${safeGoalText(getGoalPrimaryPlan(category))}</dd></div>
+      <div><dt>Reward</dt><dd>${safeGoalText(category.reward, "まだ未設定")}</dd></div>
+      <div><dt>Vision</dt><dd>${safeGoalText(category.vision, "Dream Sheet")}</dd></div>
+    </dl>
+    <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">▶ このエリアを育てる</button>
+  `;
+  return area;
+}
+
+function renderGoalAreaStrip(state, active) {
+  const strip = document.createElement("section");
+  strip.className = "goal-area-strip";
+  state.categories.forEach((category) => {
+    const progress = calculateGoalProgress(category);
+    const unlocked = !["hidden", "locked"].includes(category.status ?? "hidden");
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `goal-area-tile life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
+    tile.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    tile.dataset.categoryId = category.id;
+    tile.innerHTML = `
+      <span class="goal-area-tile-icon">${category.icon}</span>
+      <strong>${safeGoalText(category.label)}</strong>
+      <small>Lv.${getGoalLevel(category)} / ${progress}%</small>
+    `;
+    strip.append(tile);
+  });
+  return strip;
+}
+
+function renderGoalWizardV3(category) {
+  const wizard = goalWizardState;
+  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
+  const step = goalWizardSteps[stepIndex];
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-wizard goal-wizard-game";
+  detail.dataset.categoryId = category.id;
+  const prompts = [
+    ["Step 1 · Wish", "まずは願いを書こう。まだふわっとしていて大丈夫だよ。", "今年、一番叶えたいことは？", "例：韓国に近づく働き方をつくる"],
+    ["Step 2 · Outcome", "叶った後の景色を見てみよう。毎日の感じを言葉にしてね。", "叶ったら、どんな毎日になっている？", "例：安心しながら、新しい挑戦を楽しんでいる"],
+    ["Step 3 · Obstacle", "先につまずきを知っておけば、やさしく進めるよ。", "途中で止まりそうなのは、どんな時？", "例：情報が多すぎて、選べなくなる時"],
+    ["Step 4 · Plan", "最後に、小さな一歩を置こう。1行に1つずつでOK。", "今日か今週、何から始める？", "例：求人条件を1件調べる\n必要な貯金額をMoneyに入れる"],
+  ];
+  const [eyebrow, rabbit, question, placeholder] = prompts[stepIndex];
+  detail.innerHTML = `
+    <article class="goal-wizard-card">
+      <div class="goal-wizard-top">
+        <button type="button" data-goal-action="cancel-goal-wizard">← エリアへ戻る</button>
+        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
+      </div>
+      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
+      <div class="goal-wizard-rabbit">
+        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
+        <div><span>Bloom Rabbit</span><p>${rabbit}</p></div>
+      </div>
+      <div class="goal-wizard-question">
+        <span>${eyebrow}</span>
+        <h2>${question}</h2>
+        <textarea data-goal-wizard-input rows="4" placeholder="${placeholder}"></textarea>
+        <p class="goal-wizard-error" aria-live="polite"></p>
+      </div>
+      <div class="goal-wizard-actions">
+        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
+        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? "マップを育てる ✨" : "次へ"}</button>
+      </div>
+    </article>
+  `;
+  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
+  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
+  return detail;
+}
+
+function renderGoalsFolderV3() {
+  const state = loadGoalState();
+  const active = activeGoalCategory();
+  const shell = document.createElement("section");
+  shell.className = "goals-workspace goals-game";
+  shell.innerHTML = `
+    <section class="goal-game-theme">
+      <span>2026 Theme</span>
+      <strong>${safeGoalText(state.yearTheme)}</strong>
+      <textarea data-goal-field="yearTheme" rows="2">${safeGoalText(state.yearTheme)}</textarea>
+    </section>
+    <section class="goal-game-map-slot"></section>
+    <section class="goal-game-areas">
+      <div class="goal-section-title">
+        <span>Areas</span>
+        <h3>育てるエリア</h3>
+      </div>
+    </section>
+    <section class="goal-game-current"></section>
+  `;
+
+  shell.querySelector(".goal-game-map-slot").append(renderLifeMapBoard(state, { mode: "goals" }));
+  shell.querySelector(".goal-game-areas").append(renderGoalAreaStrip(state, active));
+
+  const current = shell.querySelector(".goal-game-current");
+  if (!active) {
+    current.innerHTML = `
+      <article class="goal-current-empty">
+        <span>Choose an area</span>
+        <h3>まずは育てたいエリアを1つ選ぼう</h3>
+        <p>全部を一度に決めなくて大丈夫。マップを眺めて、今いちばん気になる場所から始めます。</p>
+      </article>
+    `;
+    return shell;
+  }
+
+  if (goalMandalaCategoryId === active.id) {
+    current.append(renderGoalMandalaScreen(active));
+    return shell;
+  }
+
+  if (goalWizardState?.categoryId === active.id) {
+    current.append(renderGoalWizardV3(active));
+    return shell;
+  }
+
+  const detail = document.createElement("div");
+  detail.className = "goal-detail-grid goal-game-detail";
+  detail.dataset.categoryId = active.id;
+  detail.append(renderGoalCurrentArea(active));
+  detail.append(renderGoalStatusCards(active));
+  detail.insertAdjacentHTML("beforeend", `
+    <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${active.id}">
+      <span>✨ もっとアイデアを広げたい？</span>
+      <strong>マンダラチャートを開く →</strong>
+    </button>
+  `);
+  current.append(detail);
+  return shell;
 }
 
 function renderCalendarEditor(event) {
@@ -2147,6 +2458,8 @@ function handleGoalAction(button) {
   if (action === "unlock-category") {
     const category = state.categories.find((item) => item.id === button.dataset.categoryId);
     if (!category) return;
+    goalWizardState = null;
+    goalMandalaCategoryId = "";
     category.status = "seed";
     category.mapStage = "seed";
     category.isUnlocked = true;
@@ -2168,9 +2481,105 @@ function handleGoalAction(button) {
   if (action === "select-category") {
     const category = state.categories.find((item) => item.id === button.dataset.categoryId);
     if (!category || ["hidden", "locked"].includes(category.status)) return;
+    goalWizardState = null;
+    goalMandalaCategoryId = "";
     state.activeCategoryId = category.id;
     saveGoalState();
     renderFolder("goals");
+    return;
+  }
+
+  if (action === "start-goal-wizard") {
+    const category = state.categories.find((item) => item.id === button.dataset.categoryId);
+    if (!category) return;
+    goalMandalaCategoryId = "";
+    if (["hidden", "locked"].includes(category.status ?? "hidden")) {
+      category.status = "seed";
+      category.mapStage = "seed";
+      category.isUnlocked = true;
+      state.lastUnlockedCategoryId = category.id;
+    }
+    state.activeCategoryId = category.id;
+    goalWizardState = {
+      categoryId: category.id,
+      step: Math.max(0, Math.min(goalWizardSteps.length - 1, Number(button.dataset.step) || 0)),
+      drafts: {
+        wish: category.woop.wish,
+        outcome: category.woop.outcome,
+        obstacle: category.woop.obstacle,
+        plans: [...category.woop.plans],
+      },
+    };
+    saveGoalState();
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "cancel-goal-wizard") {
+    goalWizardState = null;
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "previous-goal-wizard") {
+    if (!goalWizardState) return;
+    const step = goalWizardSteps[goalWizardState.step];
+    const input = button.closest(".goal-wizard")?.querySelector("[data-goal-wizard-input]");
+    if (input && step) {
+      goalWizardState.drafts[step.key] = step.key === "plans" ? splitGoalLines(input.value) : input.value.trim();
+    }
+    goalWizardState.step = Math.max(0, goalWizardState.step - 1);
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "next-goal-wizard") {
+    if (!goalWizardState) return;
+    const category = state.categories.find((item) => item.id === goalWizardState.categoryId);
+    const step = goalWizardSteps[goalWizardState.step];
+    const wizard = button.closest(".goal-wizard");
+    const input = wizard?.querySelector("[data-goal-wizard-input]");
+    const value = input?.value.trim() ?? "";
+    if (!category || !step || !value) {
+      const error = wizard?.querySelector(".goal-wizard-error");
+      if (error) error.textContent = "ひとことだけ、書いてみよう。";
+      input?.focus();
+      return;
+    }
+
+    goalWizardState.drafts[step.key] = step.key === "plans" ? splitGoalLines(value) : value;
+    if (goalWizardState.step < goalWizardSteps.length - 1) {
+      goalWizardState.step += 1;
+      renderFolder("goals");
+      return;
+    }
+
+    category.woop.wish = goalWizardState.drafts.wish;
+    category.woop.outcome = goalWizardState.drafts.outcome;
+    category.woop.obstacle = goalWizardState.drafts.obstacle;
+    category.woop.plans = goalWizardState.drafts.plans;
+    category.completedPlans = category.woop.plans.map((_, index) => Boolean(category.completedPlans?.[index]));
+    category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
+    refreshGoalMapStage(category);
+    state.activeCategoryId = category.id;
+    goalWizardState = null;
+    saveGoalState();
+    renderFolder("goals");
+    addMessage("assistant", `${category.label}に新しい道ができたよ。`);
+    return;
+  }
+
+  if (action === "open-mandala") {
+    goalWizardState = null;
+    goalMandalaCategoryId = button.dataset.categoryId;
+    renderFolder("goals");
+    return;
+  }
+
+  if (action === "close-mandala") {
+    goalMandalaCategoryId = "";
+    renderFolder("goals");
+    return;
   }
 
   if (action === "toggle-mandala") {
