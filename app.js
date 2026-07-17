@@ -281,13 +281,13 @@ const lifeMapAssets = {
     a5: new URL("./assets/lifemap/background/A5.png", import.meta.url).href,
   },
   clouds: {
-    dense: new URL("./assets/lifemap/cloud-safe/overlay-dense.png", import.meta.url).href,
-    medium: new URL("./assets/lifemap/cloud-safe/overlay-medium.png", import.meta.url).href,
-    soft: new URL("./assets/lifemap/cloud-safe/overlay-soft.png", import.meta.url).href,
-    light: new URL("./assets/lifemap/cloud-safe/overlay-light.png", import.meta.url).href,
+    dense: new URL("./assets/lifemap/cloud/overlay dence.png", import.meta.url).href,
+    medium: new URL("./assets/lifemap/cloud/overlay medium.png", import.meta.url).href,
+    soft: new URL("./assets/lifemap/cloud/overlay soft.png", import.meta.url).href,
+    light: new URL("./assets/lifemap/cloud/overlay light.png", import.meta.url).href,
   },
-  locked: new URL("./assets/lifemap/decoration-safe/marker-locked.png", import.meta.url).href,
-  sparkles: new URL("./assets/lifemap/effect-safe/sparkles.png", import.meta.url).href,
+  locked: new URL("./assets/lifemap/decoration/marker locked.png", import.meta.url).href,
+  sparkles: new URL("./assets/lifemap/effect/sparkles.png", import.meta.url).href,
 };
 
 const defaultGoalIdealDay = [
