@@ -1880,6 +1880,22 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 720px) {
+  .money-garden,
+  .money-strategy {
+    gap: 9px;
+  }
+
+  .money-hero,
+  .money-card,
+  .money-future,
+  .money-setup {
+    border-radius: 16px;
+  }
+
+  .money-hero {
+    padding: 13px;
+  }
+
   .money-want-form,
   .money-sim-grid {
     grid-template-columns: 1fr;
@@ -1892,8 +1908,55 @@ input[type="checkbox"] {
     display: grid;
   }
 
+  .money-hero div {
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .money-hero h3 {
+    font-size: 22px;
+    line-height: 1.22;
+  }
+
+  .money-hero strong,
+  .money-strategy-hero strong {
+    width: fit-content;
+    padding: 6px 9px;
+    font-size: 14px;
+  }
+
+  .money-hero p,
+  .money-muted,
+  .money-empty p {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
   .money-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .money-stat-grid article,
+  .money-future article,
+  .money-reserve-grid article,
+  .money-review-grid article {
+    padding: 11px;
+    border-radius: 14px;
+  }
+
+  .money-stat-grid strong,
+  .money-reserve-grid strong,
+  .money-review-grid strong,
+  .money-future strong {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .money-card,
+  .money-future {
+    padding: 12px;
   }
 
   .money-investment-layout,
@@ -1916,6 +1979,19 @@ input[type="checkbox"] {
 
   .money-goal-item div {
     display: grid;
+  }
+
+  .money-score > strong {
+    font-size: 30px;
+  }
+
+  .money-question strong {
+    font-size: 24px;
+  }
+
+  .money-rabbit-card img {
+    width: 42px;
+    height: 42px;
   }
 }
 

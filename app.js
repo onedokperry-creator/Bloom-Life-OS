@@ -1960,7 +1960,21 @@ function renderFolder(key) {
   folderContent.innerHTML = "";
 
   if (data.custom === "goals") {
-    folderContent.append(renderGoalsFolder());
+    try {
+      folderContent.append(renderGoalsFolder());
+    } catch (error) {
+      console.error("Goals render failed", error);
+      const fallback = document.createElement("section");
+      fallback.className = "goals-workspace goals-game goals-error";
+      fallback.innerHTML = `
+        <article class="goal-current-empty">
+          <span>Goals</span>
+          <h3>Goalsを表示できませんでした</h3>
+          <p>画面の構成を復旧中です。再読み込みしても続く場合は、最新の app.js をアップロードしてください。</p>
+        </article>
+      `;
+      folderContent.append(fallback);
+    }
   } else if (data.custom === "money") {
     folderContent.append(renderMoneyFolder());
   } else if (data.custom === "calendar") {
@@ -2203,7 +2217,7 @@ function renderGoalsFolderV3() {
     <section class="goal-game-areas">
       <div class="goal-section-title">
         <span>Areas</span>
-        <h3>閧ｲ縺ｦ繧九お繝ｪ繧｢</h3>
+        <h3>育てるエリアを選ぶ</h3>
       </div>
     </section>
     <section class="goal-game-current"></section>
@@ -2217,8 +2231,8 @@ function renderGoalsFolderV3() {
     current.innerHTML = `
       <article class="goal-current-empty">
         <span>Choose an area</span>
-        <h3>縺ｾ縺壹・閧ｲ縺ｦ縺溘＞繧ｨ繝ｪ繧｢繧・縺､驕ｸ縺ｼ縺・/h3>
-        <p>蜈ｨ驛ｨ繧剃ｸ蠎ｦ縺ｫ豎ｺ繧√↑縺上※螟ｧ荳亥､ｫ縲ゅ・繝・・繧堤惻繧√※縲∽ｻ翫＞縺｡縺ｰ繧捺ｰ励↓縺ｪ繧句ｴ謇縺九ｉ蟋九ａ縺ｾ縺吶・/p>
+        <h3>まずは育てたいエリアをひとつ選ぼう</h3>
+        <p>全部を一度に決めなくて大丈夫。いま気になる場所から、少しだけ世界を育てます。</p>
       </article>
     `;
     return shell;
@@ -2241,12 +2255,205 @@ function renderGoalsFolderV3() {
   if (goalWoopEditCategoryId === active.id) detail.append(renderGoalHiddenEditor(active));
   detail.insertAdjacentHTML("beforeend", `
     <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${active.id}">
-      <span>笨ｨ 繧ゅ▲縺ｨ繧｢繧､繝・い繧貞ｺ・￡縺溘＞・・/span>
-      <strong>繝槭Φ繝繝ｩ繝√Ε繝ｼ繝医ｒ髢九￥ 竊・/strong>
+      <span>もっとアイデアを広げたい？</span>
+      <strong>Mandala Chartを開く →</strong>
     </button>
   `);
   current.append(detail);
   return shell;
+}
+
+function getGoalVillageName(category) {
+  const names = {
+    career: "Career Village",
+    money: "Money Garden",
+    health: "Health Terrace",
+    life: "Joy Park",
+    growth: "Growth Library",
+  };
+  return names[category?.id] ?? `${category?.label ?? "Goal"} Area`;
+}
+
+function renderGoalAreaStrip(state, active) {
+  const strip = document.createElement("div");
+  strip.className = "goal-area-strip";
+  (state.categories ?? []).forEach((category) => {
+    const progress = calculateGoalProgress(category);
+    const unlocked = !["hidden", "locked"].includes(category.status ?? "hidden");
+    const tile = document.createElement("button");
+    tile.className = `goal-area-tile life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
+    tile.type = "button";
+    tile.dataset.goalAction = unlocked ? "select-category" : "unlock-category";
+    tile.dataset.categoryId = category.id;
+    tile.innerHTML = `
+      <span class="goal-area-tile-icon">${category.icon}</span>
+      <strong>${safeGoalText(category.label)}</strong>
+      <small>Lv.${getGoalLevel(category)} / ${progress}%</small>
+    `;
+    strip.append(tile);
+  });
+  return strip;
+}
+
+function renderGoalVillageOverview(category) {
+  const progress = calculateGoalProgress(category);
+  const plans = splitGoalLines(category.woop?.plans ?? []);
+  const nextAction = category.nextAction || plans.find((_, index) => !category.completedPlans?.[index]) || "次の一歩を決める";
+  const card = document.createElement("article");
+  card.className = `goal-current-area goal-village-overview life-category-${category.tone}`;
+  card.innerHTML = `
+    <div class="goal-current-head">
+      <span class="goal-current-building">${category.icon}</span>
+      <div>
+        <span>${getGoalVillageName(category)}</span>
+        <h3>${safeGoalText(category.label)}</h3>
+        <p>${safeGoalText(category.title)}</p>
+      </div>
+      <strong>Lv.${getGoalLevel(category)}</strong>
+    </div>
+    <p class="goal-current-wish">${safeGoalText(category.woop?.wish, "まだ小さな土地。育てるを押して、願いを置いてみよう。")}</p>
+    <div class="goal-current-progress">
+      <span>Progress ${progress}%</span>
+      <i><b style="width: ${progress}%"></b></i>
+    </div>
+    <dl class="goal-current-meta">
+      <div>
+        <dt>Next Action</dt>
+        <dd>${safeGoalText(nextAction)}</dd>
+      </div>
+      <div>
+        <dt>Reward</dt>
+        <dd>${safeGoalText(category.reward, "未設定")}</dd>
+      </div>
+      <div>
+        <dt>Vision</dt>
+        <dd>${safeGoalText(category.vision, "Dream Sheet")}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd>${safeGoalText(goalStatusFromProgress(category))}</dd>
+      </div>
+    </dl>
+    <div class="goal-overview-actions">
+      <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">このエリアを育てる</button>
+      <button type="button" data-goal-action="edit-woop" data-category-id="${category.id}">編集</button>
+      <button type="button" data-goal-action="open-vision">Vision</button>
+    </div>
+  `;
+  return card;
+}
+
+function renderGoalRabbitConversation(category) {
+  const step = goalWizardSteps[goalWizardState.step];
+  const value = step.key === "plans"
+    ? splitGoalLines(goalWizardState.drafts.plans).join("\n")
+    : goalWizardState.drafts[step.key] ?? "";
+  const card = document.createElement("section");
+  card.className = "goal-conversation-card goal-wizard";
+  card.innerHTML = `
+    <div class="money-setup-top">
+      <button type="button" data-goal-action="cancel-goal-wizard">← 村へ戻る</button>
+      <strong>${goalWizardState.step + 1} / ${goalWizardSteps.length}</strong>
+    </div>
+    <div class="money-setup-progress">
+      ${goalWizardSteps.map((_, index) => `<i class="${index <= goalWizardState.step ? "is-filled" : ""}"></i>`).join("")}
+    </div>
+    <article class="goal-conversation-scene">
+      <img src="${RABBIT_HOME_ICONS[0]}" alt="Bloom Rabbit" />
+      <div>
+        <span>Bloom Rabbit</span>
+        <p>${safeGoalText(step.rabbit)}</p>
+      </div>
+    </article>
+    <label class="goal-conversation-question">
+      <span>${safeGoalText(step.eyebrow)}</span>
+      <h2>${safeGoalText(step.question)}</h2>
+      <textarea data-goal-wizard-input rows="5" placeholder="${safeGoalText(step.placeholder)}"></textarea>
+    </label>
+    <p class="goal-wizard-error" aria-live="polite"></p>
+    <div class="money-setup-actions">
+      <button type="button" data-goal-action="previous-goal-wizard" ${goalWizardState.step === 0 ? "disabled" : ""}>戻る</button>
+      <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${goalWizardState.step === goalWizardSteps.length - 1 ? "保存" : "次へ"}</button>
+    </div>
+  `;
+  card.querySelector("[data-goal-wizard-input]").value = value;
+  return card;
+}
+
+function renderGoalPlanChecks(container, category) {
+  if (!container) return;
+  container.innerHTML = "";
+  splitGoalLines(category.woop?.plans ?? []).forEach((plan, index) => {
+    const label = document.createElement("label");
+    label.className = "goal-plan-check";
+    label.innerHTML = `<input type="checkbox" data-goal-field="completedPlan" data-index="${index}" /><span></span>`;
+    label.querySelector("input").checked = Boolean(category.completedPlans?.[index]);
+    label.querySelector("span").textContent = plan;
+    container.append(label);
+  });
+}
+
+function renderGoalHiddenEditor(category) {
+  const editor = document.createElement("section");
+  editor.className = "goal-hidden-editor";
+  editor.innerHTML = `
+    <div class="goal-editor-head">
+      <div>
+        <span>Goal Design</span>
+        <h3>${safeGoalText(getGoalVillageName(category))}</h3>
+      </div>
+      <button type="button" data-goal-action="close-woop">閉じる</button>
+    </div>
+    <div class="goal-woop">
+      <label><span>Wish</span><textarea data-goal-field="wish" rows="3"></textarea></label>
+      <label><span>Outcome</span><textarea data-goal-field="outcome" rows="3"></textarea></label>
+      <label><span>Obstacle</span><textarea data-goal-field="obstacle" rows="3"></textarea></label>
+      <label><span>Plan</span><textarea data-goal-field="plans" rows="4"></textarea></label>
+      <div class="goal-plan-checks"></div>
+    </div>
+  `;
+  editor.querySelector('[data-goal-field="wish"]').value = category.woop?.wish ?? "";
+  editor.querySelector('[data-goal-field="outcome"]').value = category.woop?.outcome ?? "";
+  editor.querySelector('[data-goal-field="obstacle"]').value = category.woop?.obstacle ?? "";
+  editor.querySelector('[data-goal-field="plans"]').value = splitGoalLines(category.woop?.plans ?? []).join("\n");
+  renderGoalPlanChecks(editor.querySelector(".goal-plan-checks"), category);
+  return editor;
+}
+
+function ensureGoalMandalaSeeds(category) {
+  const seedsByCategory = {
+    career: ["韓国で働く", "会社", "働き方", "スキル", "英語", "韓国語", "生活", "お金", "価値観"],
+    money: ["安心して暮らす", "収入", "支出", "固定費", "旅行", "美容", "予備費", "将来", "ごほうび"],
+    health: ["整った体", "睡眠", "食事", "運動", "休息", "病院", "姿勢", "メンタル", "美容"],
+    life: ["好きで満ちる", "友達", "家族", "ダンス", "カフェ", "旅行", "趣味", "思い出", "感謝"],
+    growth: ["内側を育てる", "学び", "読書", "言葉", "習慣", "記録", "休む", "挑戦", "振り返り"],
+  };
+  if (!Array.isArray(category.mandala) || category.mandala.length !== 9) {
+    category.mandala = seedsByCategory[category.id] ?? ["Theme", category.label, "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review"];
+  }
+}
+
+function renderGoalMandalaScreen(category) {
+  ensureGoalMandalaSeeds(category);
+  const card = document.createElement("section");
+  card.className = "goal-current-area goal-mandala-screen";
+  card.innerHTML = `
+    <div class="goal-editor-head">
+      <div>
+        <span>Mandala Chart</span>
+        <h3>${safeGoalText(category.label)}のアイデアを広げる</h3>
+      </div>
+      <button type="button" data-goal-action="close-mandala">戻る</button>
+    </div>
+    <div class="mandala-grid">
+      ${category.mandala.map((value, index) => `
+        <label class="${index === 4 ? "is-center" : ""}">
+          <input data-goal-field="mandala" data-index="${index}" value="${safeGoalText(value)}" />
+        </label>
+      `).join("")}
+    </div>
+  `;
+  return card;
 }
 
 function renderCalendarEditor(event) {
