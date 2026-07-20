@@ -1,4 +1,4 @@
-import {
+﻿import {
   createVisionBoard,
   createVisionItem,
   deleteVisionItem,
@@ -6,6 +6,7 @@ import {
   getGoalLifeMap,
   getCalendarEvents,
   getCurrentUser,
+  getMoneyOverviewData,
   getTodayTasks,
   getVisionBoards,
   hasSupabaseConfig,
@@ -30,14 +31,8 @@ const folderData = {
   },
   money: {
     title: "Money",
-    sections: [
-      ["Income", "今月 280,000円"],
-      ["Spending", "今月 48,200円"],
-      ["Budget", "残り 71,800円"],
-      ["Event Budget", "12,000円"],
-      ["Reward Savings", "32,600円 / 50,000円"],
-      ["Assets", "先月より +18,000円"],
-    ],
+    custom: "money",
+    sections: [],
   },
   calendar: {
     title: "Calendar",
@@ -52,7 +47,7 @@ const folderData = {
   memories: {
     title: "Memories",
     sections: [
-      ["Journal", "まだ記録はありません。Bloom Chatから保存するとここに反映されます。"],
+      ["Journal", "Bloom Chatから保存するとここに表示されます。"],
       ["Happy Moments", "まだ記録はありません。"],
       ["Done List", "まだ記録はありません。"],
       ["Gratitude", "まだ記録はありません。"],
@@ -66,12 +61,11 @@ const folderData = {
       ["Level", "Lv.23"],
       ["Badges", "Bloom Starter / Dance Seed"],
       ["Streak", "7 days"],
-      ["AI Reflection", "昨日より少し、自分の生活を育てられています。"],
+      ["AI Reflection", "昨日より少し、生活を育てられています。"],
       ["Growth Log", "自分を責めずに記録できた。"],
     ],
   },
 };
-
 const folderButtons = document.querySelectorAll(".folder-card");
 const folderWindow = document.querySelector("#folderWindow");
 const folderTitle = document.querySelector("#folderTitle");
@@ -115,6 +109,14 @@ let editingCalendarEventId = null;
 let goalWizardState = null;
 let goalMandalaCategoryId = "";
 let goalWoopEditCategoryId = "";
+let moneyOverviewState = {
+  loaded: false,
+  loading: false,
+  error: "",
+  data: null,
+  showFuture: false,
+  setup: null,
+};
 let visionState = {
   boards: [],
   activeBoardId: null,
@@ -189,7 +191,7 @@ const calendarKindOptions = [
 const visionStarterItems = [
   {
     type: "sticky",
-    content: "ここに2026年の理想を書いてね",
+    content: "縺薙％縺ｫ2026蟷ｴ縺ｮ逅・Φ繧呈嶌縺・※縺ｭ",
     color: "butter",
     x: 26,
     y: 34,
@@ -200,7 +202,7 @@ const visionStarterItems = [
   },
   {
     type: "text",
-    content: "韓国ワーホリ / 理想の部屋 / 美容計画",
+    content: "髻灘嵜繝ｯ繝ｼ繝帙Μ / 逅・Φ縺ｮ驛ｨ螻・/ 鄒主ｮｹ險育判",
     color: "white",
     x: 214,
     y: 72,
@@ -269,7 +271,6 @@ const goalCategories = [
     prompt: "どんな内側の変化を育てたい？",
   },
 ];
-
 const goalProgressSourceOptions = [
   ["plan-checks", "Plan checks"],
   ["task-sync", "Task app sync"],
@@ -393,7 +394,7 @@ function getLifeMapRabbitMessage(state) {
   const unlocked = state.categories.filter((category) => !["hidden", "locked"].includes(category.status)).length;
   if (state.lastUnlockedCategoryId) return "新しいエリアが見えてきたよ";
   if (!unlocked) return "まずは、育てたいエリアをひとつ選ぼう";
-  return "小さな一歩が、世界を少しずつ育てるよ";
+  return "小さな一歩が、世界を少しずつ育ててるよ";
 }
 
 function getLifeMapStage(state) {
@@ -506,11 +507,11 @@ function createDefaultGoalState() {
   });
 
   return {
-    yearTheme: "自由に、しなやかに育つ",
+    yearTheme: "閾ｪ逕ｱ縺ｫ縲√＠縺ｪ繧・°縺ｫ閧ｲ縺､",
     idealDay: defaultGoalIdealDay,
     activeCategoryId: "",
     categories,
-    recentWins: ["Visionを開いて理想を見直した", "今日の予定を整理できた"],
+    recentWins: ["Vision繧帝幕縺・※逅・Φ繧定ｦ狗峩縺励◆", "莉頑律縺ｮ莠亥ｮ壹ｒ謨ｴ逅・〒縺阪◆"],
     lastUnlockedCategoryId: "",
   };
 }
@@ -556,7 +557,7 @@ async function saveGoalStateToSupabase() {
     const { mapTransition: _mapTransition, ...goalMap } = goalState;
     await upsertGoalLifeMap({ userId: currentUser.id, goalMap });
   } catch (error) {
-    addMessage("assistant", `GoalsをSupabaseへ保存できませんでした: ${error.message}`);
+    addMessage("assistant", `Goals繧担upabase縺ｸ菫晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   }
 }
 
@@ -582,7 +583,7 @@ async function loadGoalStateFromSupabase(userId) {
     if (!folderWindow.hidden && folderTitle.textContent === "Goals") renderFolder("goals");
   } catch (error) {
     goalState = null;
-    addMessage("assistant", `Goalsはローカル保存で表示中です。Supabase SQLを準備すると同期できます: ${error.message}`);
+    addMessage("assistant", `Goals縺ｯ繝ｭ繝ｼ繧ｫ繝ｫ菫晏ｭ倥〒陦ｨ遉ｺ荳ｭ縺ｧ縺吶４upabase SQL繧呈ｺ門ｙ縺吶ｋ縺ｨ蜷梧悄縺ｧ縺阪∪縺・ ${error.message}`);
   }
 }
 
@@ -804,7 +805,7 @@ async function loadTaskMissions(userId) {
     const tasks = await getTodayTasks({ userId, limit: 6 });
     renderTaskMissions(tasks);
   } catch (error) {
-    addMessage("assistant", `Tasksを読み込めませんでした: ${error.message}`);
+    addMessage("assistant", `Tasks繧定ｪｭ縺ｿ霎ｼ繧√∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   }
 }
 
@@ -838,7 +839,7 @@ async function loadVisionBoards(userId = currentUser?.id) {
   } catch (error) {
     visionState = {
       ...visionState,
-      error: `Visionの保存テーブルを準備すると使えるようになります: ${error.message}`,
+      error: `Vision縺ｮ菫晏ｭ倥ユ繝ｼ繝悶Ν繧呈ｺ門ｙ縺吶ｋ縺ｨ菴ｿ縺医ｋ繧医≧縺ｫ縺ｪ繧翫∪縺・ ${error.message}`,
       loaded: true,
       saving: false,
     };
@@ -1051,6 +1052,908 @@ function updateLocalFolders(data) {
   folderData.calendar.sections = [];
 }
 
+function yen(value) {
+  return `${Math.round(Number(value) || 0).toLocaleString("ja-JP")}円`;
+}
+
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function monthsLeftInYear() {
+  const today = new Date();
+  return Math.max(1, 12 - today.getMonth());
+}
+
+function moneyCategory() {
+  const state = loadGoalState();
+  return state.categories.find((category) => category.id === "money");
+}
+
+function moneySettings() {
+  const category = moneyCategory();
+  category.money ??= {};
+  category.money.goals ??= [];
+  return category.money;
+}
+
+function isMoneyConfigured() {
+  const settings = moneySettings();
+  return Boolean(settings.money_theme || settings.year_end_target || settings.monthly_target_amount || settings.goals?.length);
+}
+
+function parseMoneyAmount(value) {
+  const normalized = String(value ?? "")
+    .replace(/[\uFF10-\uFF19]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/[,\uFF0C\s]/g, "");
+  const oku = normalized.match(new RegExp("(\\d+(?:\\.\\d+)?)\\u5104"));
+  const man = normalized.match(new RegExp("(\\d+(?:\\.\\d+)?)\\u4E07"));
+  if (oku || man) {
+    return Math.round((oku ? Number(oku[1]) * 100000000 : 0) + (man ? Number(man[1]) * 10000 : 0));
+  }
+  const plain = normalized.match(/\d+/);
+  return plain ? Number(plain[0]) : 0;
+}
+
+function parseMoneyDate(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const normalized = text
+    .replace(/[\uFF10-\uFF19]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/[./]/g, "-");
+  const full = normalized.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (full) return `${full[1]}-${full[2].padStart(2, "0")}-${full[3].padStart(2, "0")}`;
+  const short = normalized.match(/(\d{1,2})-(\d{1,2})/);
+  if (short) return `${new Date().getFullYear()}-${short[1].padStart(2, "0")}-${short[2].padStart(2, "0")}`;
+  const month = normalized.match(/(\d{1,2})\s*\u6708/);
+  if (month) return `${new Date().getFullYear()}-${month[1].padStart(2, "0")}-28`;
+  return "";
+}
+
+function moneyEventDate(item) {
+  return item.paid_on || item.scheduled_on || item.created_at?.slice(0, 10) || "";
+}
+
+function moneyMonthKey(value) {
+  const key = String(value ?? "");
+  return key.length >= 7 ? key.slice(0, 7) : "";
+}
+
+function moneyText(item) {
+  return `${item.title ?? ""} ${item.category ?? ""}`.toLowerCase();
+}
+
+function sumMoney(items, predicate = () => true) {
+  return items.filter(predicate).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+}
+
+function matchesAny(text, words) {
+  return words.some((word) => text.includes(word));
+}
+
+function moneyAreaFor(item) {
+  const text = moneyText(item);
+  if (matchesAny(text, ["travel", "trip", "korea", "\u65c5\u884c", "\u97d3\u56fd", "\u795e\u6238"])) return "旅行";
+  if (matchesAny(text, ["beauty", "cosme", "hair", "\u7f8e\u5bb9", "\u9999\u6c34", "\u30b3\u30b9\u30e1", "\u30d8\u30a2", "\u30cd\u30a4\u30eb"])) return "美容";
+  if (matchesAny(text, ["dance", "\u30c0\u30f3\u30b9", "\u8863\u88c5"])) return "ダンス";
+  if (matchesAny(text, ["study", "book", "\u52c9\u5f37", "\u672c", "\u8cc7\u683c"])) return "勉強";
+  if (matchesAny(text, ["event", "\u30a4\u30d9\u30f3\u30c8", "\u4ea4\u969b"])) return "イベント";
+  if (matchesAny(text, ["future", "\u5c06\u6765", "\u5f15\u3063\u8d8a\u3057", "pc"])) return "将来";
+  return "暮らし";
+}
+
+const lifeInvestmentTags = [
+  { id: "beauty", label: "Beauty", flower: "Rose", tone: "#f4a9c7", words: ["beauty", "cosme", "hair", "nail", "\u7f8e\u5bb9", "\u9999\u6c34", "\u30b3\u30b9\u30e1", "\u30d8\u30a2", "\u30cd\u30a4\u30eb"] },
+  { id: "health", label: "Health", flower: "Clover", tone: "#9edec8", words: ["health", "gym", "clinic", "\u5065\u5eb7", "\u75c5\u9662", "\u30b8\u30e0", "\u30e8\u30ac"] },
+  { id: "learning", label: "Learning", flower: "Lavender", tone: "#b9a8eb", words: ["study", "book", "school", "\u52c9\u5f37", "\u672c", "\u8cc7\u683c", "\u8a9e\u5b66"] },
+  { id: "creativity", label: "Creativity", flower: "Cosmos", tone: "#f2b8d2", words: ["create", "art", "design", "\u5236\u4f5c", "\u30a2\u30fc\u30c8", "\u30c7\u30b6\u30a4\u30f3"] },
+  { id: "expression", label: "Expression", flower: "Gerbera", tone: "#f0b67f", words: ["dance", "stage", "costume", "\u30c0\u30f3\u30b9", "\u8863\u88c5", "\u8868\u73fe"] },
+  { id: "relationships", label: "Relationships", flower: "Tulip", tone: "#f7a6a6", words: ["friend", "gift", "party", "\u53cb\u9054", "\u4ea4\u969b", "\u30ae\u30d5\u30c8", "\u30d7\u30ec\u30bc\u30f3\u30c8"] },
+  { id: "experience", label: "Experience", flower: "Sunflower", tone: "#f4cf75", words: ["travel", "trip", "event", "cafe", "\u65c5\u884c", "\u30a4\u30d9\u30f3\u30c8", "\u30ab\u30d5\u30a7", "\u97d3\u56fd", "\u795e\u6238"] },
+  { id: "future", label: "Future", flower: "Sakura", tone: "#f5bfd2", words: ["future", "saving", "pc", "move", "\u5c06\u6765", "\u8caf\u91d1", "\u5f15\u3063\u8d8a\u3057", "\u7559\u5b66"] },
+];
+
+function lifeTagForMoney(item) {
+  const text = moneyText(item);
+  return lifeInvestmentTags.find((tag) => matchesAny(text, tag.words)) ?? lifeInvestmentTags.find((tag) => tag.id === "future");
+}
+
+function getMoneyReflections(settings) {
+  return settings.reflections && typeof settings.reflections === "object" ? settings.reflections : {};
+}
+
+function moneyReflectionWeight(value) {
+  return value === "bloom" ? 3 : value === "grow" ? 2 : value === "bud" ? 1 : 0;
+}
+
+function moneyReflectionLabel(value) {
+  return value === "bloom" ? "満開" : value === "grow" ? "すくすく" : value === "bud" ? "つぼみ" : "未記録";
+}
+
+function buildLifeInvestments(expenses, reflections) {
+  const total = Math.max(1, expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  return lifeInvestmentTags.map((tag) => {
+    const items = expenses.filter((item) => lifeTagForMoney(item).id === tag.id);
+    const amount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const happiness = items.reduce((sum, item) => sum + moneyReflectionWeight(reflections[item.id]?.feeling), 0);
+    const reflected = items.filter((item) => reflections[item.id]?.feeling).length;
+    return {
+      ...tag,
+      amount,
+      count: items.length,
+      percent: Math.round((amount / total) * 100),
+      happiness: reflected ? Math.round((happiness / (reflected * 3)) * 100) : Math.min(95, Math.max(20, Math.round((items.length / Math.max(1, expenses.length)) * 100))),
+    };
+  }).sort((a, b) => b.amount - a.amount);
+}
+
+function getMoneyWants(settings) {
+  const wants = Array.isArray(settings.wants) ? settings.wants : [];
+  return wants
+    .map((want, index) => ({
+      id: want.id || `want-${index}-${String(want.title ?? "").slice(0, 8)}`,
+      title: String(want.title ?? "").trim(),
+      amount: Number(want.amount || 0),
+      deadline: want.deadline || "",
+      priority: Number(want.priority || 3),
+      saved: Number(want.saved || 0),
+    }))
+    .filter((want) => want.title);
+}
+
+function monthsUntil(dateKeyValue) {
+  const now = new Date();
+  const target = dateKeyValue ? new Date(dateKeyValue) : new Date(now.getFullYear(), 11, 31);
+  return Math.max(1, (target.getFullYear() - now.getFullYear()) * 12 + target.getMonth() - now.getMonth() + 1);
+}
+
+function moneyStatusIcon(status) {
+  return status === "good" ? "\uD83D\uDFE2" : status === "warn" ? "\uD83D\uDFE1" : "\uD83D\uDD34";
+}
+
+function calculateMoneyOverview() {
+  const settings = moneySettings();
+  const data = moneyOverviewState.data ?? { transactions: [], rewardGoals: [] };
+  const transactions = data.transactions ?? [];
+  const rewards = data.rewardGoals ?? [];
+  const now = new Date();
+  const todayKey = dateKey(now);
+  const yearEndKey = `${now.getFullYear()}-12-31`;
+  const paidIncome = transactions.filter((item) => item.kind === "income" && item.paid_on);
+  const paidExpense = transactions.filter((item) => item.kind === "expense" && item.paid_on);
+  const fixedExpense = paidExpense.filter((item) => matchesAny(moneyText(item), ["fixed", "rent", "subscription", "\u56fa\u5b9a", "\u5bb6\u8cc3", "\u30b5\u30d6\u30b9\u30af", "\u4fdd\u967a"]));
+  const variableExpense = paidExpense.filter((item) => !fixedExpense.includes(item));
+  const savingTransactions = transactions.filter((item) => ["saving", "investment"].includes(item.kind));
+  const futureExpenses = transactions.filter((item) => item.kind === "expense" && item.scheduled_on && item.scheduled_on >= todayKey && item.scheduled_on <= yearEndKey);
+  const allExpenses = transactions.filter((item) => item.kind === "expense");
+  const reflections = getMoneyReflections(settings);
+  const lifeInvestments = buildLifeInvestments(allExpenses, reflections);
+  const rewardTotal = rewards.reduce((sum, item) => sum + Number(item.current_amount || 0), 0);
+  const paidSavings = savingTransactions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const currentSavings = Math.max(rewardTotal, paidSavings);
+  const monthCount = Math.max(1, now.getMonth() + 1);
+  const averageIncome = paidIncome.reduce((sum, item) => sum + Number(item.amount || 0), 0) / monthCount;
+  const averageExpense = paidExpense.reduce((sum, item) => sum + Number(item.amount || 0), 0) / monthCount;
+  const averageFixedExpense = fixedExpense.reduce((sum, item) => sum + Number(item.amount || 0), 0) / monthCount;
+  const averageVariableExpense = variableExpense.reduce((sum, item) => sum + Number(item.amount || 0), 0) / monthCount;
+  const eventExpense = futureExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const remainingMonths = monthsLeftInYear();
+  const yearEndTarget = Number(settings.year_end_target) || Number(rewards[0]?.target_amount || 0);
+  const monthlyTarget = Number(settings.monthly_target_amount) || 0;
+  const wants = getMoneyWants(settings);
+  const wantsTotal = wants.reduce((sum, want) => sum + Number(want.amount || 0), 0);
+  const wantsSaved = wants.reduce((sum, want) => sum + Number(want.saved || 0), 0);
+  const wantsNeed = Math.max(0, wantsTotal - wantsSaved);
+  const requiredMonthlyForWants = wants.reduce((sum, want) => sum + Math.max(0, Number(want.amount || 0) - Number(want.saved || 0)) / monthsUntil(want.deadline), 0);
+  const forecastBeforeWants = currentSavings + averageIncome * remainingMonths - averageExpense * remainingMonths - eventExpense;
+  const forecast = forecastBeforeWants - wantsNeed;
+  const gap = yearEndTarget ? yearEndTarget - forecast : 0;
+  const progress = yearEndTarget ? Math.min(100, Math.max(0, Math.round((currentSavings / yearEndTarget) * 100))) : 0;
+  const spendingRatio = averageIncome ? averageExpense / averageIncome : 0;
+  const targetPressure = averageIncome ? requiredMonthlyForWants / averageIncome : 0;
+  const status = !yearEndTarget ? "warn" : gap <= 0 && spendingRatio < 0.85 ? "good" : gap <= monthlyTarget * remainingMonths || targetPressure < 0.18 ? "warn" : "bad";
+  const outlook = status === "good" ? "\u9806\u8ABF" : status === "warn" ? "\u6CE8\u610F" : "\u8981\u8ABF\u6574";
+  const expenseByArea = allExpenses.reduce((map, item) => {
+    const area = moneyAreaFor(item);
+    map[area] = (map[area] ?? 0) + Number(item.amount || 0);
+    return map;
+  }, {});
+  const topExpense = Object.entries(expenseByArea).sort((a, b) => b[1] - a[1])[0];
+  const reason = status === "good"
+    ? `支出ペースは大きく崩れていません。${topExpense ? `${topExpense[0]}は${yen(topExpense[1])}です。` : "このまま記録を続ければ見通しが立ちます。"}`
+    : status === "warn"
+      ? `${topExpense ? `${topExpense[0]}がやや大きめです。` : "まだ判断材料が少なめです。"}やりたいことを全部叶えるには、月${yen(Math.ceil(requiredMonthlyForWants || Math.max(0, gap / remainingMonths)))}ほど調整すると安心です。`
+      : `${topExpense ? `${topExpense[0]}の出費が重めです。` : "年末目標との差が大きめです。"}優先順位を絞るか、月${yen(Math.ceil(Math.max(requiredMonthlyForWants, gap / remainingMonths)))}の調整が必要です。`;
+  const moneyGoals = [
+    ...(settings.goals ?? []),
+    ...rewards.map((goal) => ({
+      title: goal.title,
+      target_amount: Number(goal.target_amount || 0),
+      current_amount: Number(goal.current_amount || 0),
+      target_date: goal.target_date,
+      reward_saving_goal_id: goal.id,
+    })),
+  ].filter((goal, index, list) => goal.title && list.findIndex((item) => item.title === goal.title) === index).slice(0, 3);
+  const investmentTotal = sumMoney(transactions, (item) => item.kind === "investment" || matchesAny(moneyText(item), ["investment", "\u6295\u8cc7", "nisa"]));
+  const repaymentBalance = sumMoney(transactions, (item) => matchesAny(moneyText(item), ["repayment", "loan", "\u8fd4\u6e08", "\u7acb\u66ff"]));
+  const monthEndBalance = forecastBeforeWants / remainingMonths;
+  const reserveTarget = 100000;
+  const reserveFund = Math.max(0, Math.round(averageIncome - averageFixedExpense - averageVariableExpense - monthlyTarget));
+  const reserveAdvice = reserveFund > reserveTarget
+    ? `予備費は目標${yen(reserveTarget)}を超える見込みです。超えた分は旅行かFutureへ回すと、未来が育ちやすくなります。`
+    : reserveFund > 0
+      ? `毎月の余り${yen(reserveFund)}を予備費へ置くと、急な予定にもやさしく対応できます。`
+      : "今月は予備費へ回す余白が少なめです。固定費と変動費を家計管理アプリで一度だけ見直すと安心です。";
+  const specialFunds = rewards.slice(0, 5).map((goal) => ({
+    title: goal.title,
+    target: Number(goal.target_amount || 0),
+    current: Number(goal.current_amount || 0),
+    percent: goal.target_amount ? Math.min(100, Math.round((Number(goal.current_amount || 0) / Number(goal.target_amount || 1)) * 100)) : 0,
+    forecast: Number(goal.current_amount || 0) + monthlyTarget * remainingMonths,
+  }));
+  const roadmap = Array.from({ length: remainingMonths }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const scheduled = futureExpenses.filter((item) => moneyMonthKey(item.scheduled_on) === key);
+    const wantsInMonth = wants.filter((want) => moneyMonthKey(want.deadline) === key);
+    const total = scheduled.reduce((sum, item) => sum + Number(item.amount || 0), 0) + wantsInMonth.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const events = [
+      ...scheduled.map((item) => ({ title: item.title || moneyAreaFor(item), area: moneyAreaFor(item), amount: Number(item.amount || 0) })),
+      ...wantsInMonth.map((item) => ({ title: item.title, area: "Want", amount: Number(item.amount || 0) })),
+    ].slice(0, 4);
+    return {
+      key,
+      label: `${date.getMonth() + 1}月`,
+      total,
+      level: total > averageExpense * 0.55 ? "danger" : total > averageExpense * 0.28 ? "warn" : "good",
+      events,
+    };
+  });
+  const scoreParts = {
+    budget: Math.max(0, Math.min(25, Math.round(25 - Math.max(0, spendingRatio - 0.75) * 80))),
+    saving: Math.max(0, Math.min(25, Math.round((currentSavings / Math.max(1, yearEndTarget || currentSavings || 1)) * 25))),
+    investment: Math.min(15, investmentTotal > 0 ? 15 : 6),
+    bonus: Math.max(0, Math.min(15, paidIncome.length ? 15 : 8)),
+    advance: Math.max(0, Math.min(20, repaymentBalance > averageExpense ? 8 : 20)),
+  };
+  const score = Object.values(scoreParts).reduce((sum, value) => sum + value, 0);
+  const scoreReasons = [
+    spendingRatio > 0.85 ? "支出比率が高めなので、固定費か美容・交際費を見直すと点数が上がります。" : "支出は大きく崩れていません。",
+    currentSavings < yearEndTarget * 0.35 ? "積立ペースはこれから育てる余地があります。" : "積立は目標へ向けて進んでいます。",
+    investmentTotal ? "投資記録があります。" : "投資枠は未記録です。必要なら家計管理アプリで管理できます。",
+  ];
+  const nextActions = [
+    gap > 0 && monthlyTarget ? `\u4ECA\u6708\u3042\u3068${yen(Math.min(gap, monthlyTarget))}\u3092\u7A4D\u307F\u7ACB\u3066\u308B` : "",
+    futureExpenses.length ? "\u30A4\u30D9\u30F3\u30C8\u4E88\u7B97\u3092\u5BB6\u8A08\u7BA1\u7406\u30A2\u30D7\u30EA\u3067\u78BA\u8A8D\u3059\u308B" : "",
+    requiredMonthlyForWants ? `やりたいこと用に月${yen(Math.ceil(requiredMonthlyForWants))}を確保する` : "",
+    averageExpense ? "\u4F7F\u3063\u3066\u3044\u306A\u3044\u30B5\u30D6\u30B9\u30AF\u30921\u3064\u78BA\u8A8D\u3059\u308B" : "\u5BB6\u8A08\u7BA1\u7406\u30A2\u30D7\u30EA\u3067\u53CE\u5165\u30FB\u652F\u51FA\u3092\u8A18\u9332\u3059\u308B",
+  ].filter(Boolean).slice(0, 3);
+  const suggestions = [
+    topExpense ? `${topExpense[0]}は今年${yen(topExpense[1])}です。来月はこのカテゴリだけ先に予算を決めると整いやすいです。` : "家計管理アプリに支出が増えるほど、提案の精度が上がります。",
+    requiredMonthlyForWants ? `やりたいことを全部叶えるには、月${yen(Math.ceil(requiredMonthlyForWants))}の専用積立が目安です。` : "やりたいことを追加すると、必要な月額積立を自動で出します。",
+    reserveAdvice,
+    wants.length > 1 ? `優先度が高い順に「${wants.slice().sort((a, b) => a.priority - b.priority)[0].title}」から確保すると安心です。` : "まずは今年叶えたいことを1つ登録してみてください。",
+  ].slice(0, 4);
+  const topLifeInvestment = lifeInvestments[0] ?? lifeInvestmentTags[0];
+  const happiestInvestment = lifeInvestments.slice().sort((a, b) => b.happiness - a.happiness)[0] ?? topLifeInvestment;
+  const recentReflectionTargets = paidExpense
+    .filter((item) => !reflections[item.id])
+    .sort((a, b) => String(b.paid_on || b.created_at || "").localeCompare(String(a.paid_on || a.created_at || "")))
+    .slice(0, 3);
+  const yearReview = {
+    topFlower: topLifeInvestment,
+    happiest: happiestInvestment,
+    growth: lifeInvestments.find((tag) => ["learning", "health", "expression"].includes(tag.id)) ?? topLifeInvestment,
+    bestSpending: paidExpense.slice().sort((a, b) => moneyReflectionWeight(reflections[b.id]?.feeling) - moneyReflectionWeight(reflections[a.id]?.feeling))[0] ?? null,
+    values: lifeInvestments.filter((tag) => tag.amount > 0).slice(0, 3).map((tag) => tag.label).join(" / ") || "Future",
+  };
+
+  return {
+    settings,
+    currentSavings,
+    averageIncome,
+    averageExpense,
+    averageFixedExpense,
+    averageVariableExpense,
+    eventExpense,
+    forecast,
+    yearEndTarget,
+    gap,
+    progress,
+    status,
+    outlook,
+    reason,
+    moneyGoals,
+    wants,
+    wantsTotal,
+    wantsNeed,
+    requiredMonthlyForWants,
+    forecastBeforeWants,
+    investmentTotal,
+    repaymentBalance,
+    monthEndBalance,
+    reserveFund,
+    reserveTarget,
+    reserveAdvice,
+    specialFunds,
+    lifeInvestments,
+    topLifeInvestment,
+    happiestInvestment,
+    recentReflectionTargets,
+    yearReview,
+    roadmap,
+    score,
+    scoreParts,
+    scoreReasons,
+    suggestions,
+    nextActions,
+    scenarios: [
+      ["\u4ECA\u306E\u307E\u307E", forecast, gap > 0 ? Math.ceil(gap / remainingMonths) : 0],
+      ["\u5C11\u3057\u6574\u3048\u305F\u5834\u5408", forecast + monthlyTarget * remainingMonths, gap > 0 ? Math.max(0, Math.ceil((gap - monthlyTarget * remainingMonths) / remainingMonths)) : 0],
+      ["\u76EE\u6A19\u30DA\u30FC\u30B9", yearEndTarget || forecast, gap > 0 ? Math.ceil(gap / remainingMonths) : 0],
+    ],
+  };
+}
+function updateMoneyGoalProgress() {
+  const category = moneyCategory();
+  if (!category) return;
+  const overview = calculateMoneyOverview();
+  category.progress = overview.progress;
+  category.status = !overview.yearEndTarget ? "seed" : overview.progress >= 100 ? "bloomed" : overview.progress >= 75 ? "growing" : overview.progress >= 25 ? "growing" : overview.currentSavings > 0 ? "planned" : "seed";
+  category.mapStage = category.status;
+}
+
+async function loadMoneyOverview() {
+  if (!currentUser || moneyOverviewState.loading || moneyOverviewState.loaded) return;
+  moneyOverviewState.loading = true;
+  moneyOverviewState.error = "";
+  try {
+    moneyOverviewState.data = await getMoneyOverviewData({ userId: currentUser.id });
+    moneyOverviewState.loaded = true;
+    updateMoneyGoalProgress();
+    saveGoalState();
+  } catch (error) {
+    moneyOverviewState.error = error.message;
+  } finally {
+    moneyOverviewState.loading = false;
+  }
+}
+
+const moneySetupQuestions = [
+  {
+    key: "money_theme",
+    eyebrow: "Money Theme",
+    question: "今年、お金の面で叶えたいことは？",
+    placeholder: "例：韓国ワーホリ準備を安心して進める",
+  },
+  {
+    key: "year_end_target",
+    eyebrow: "Year End Target",
+    question: "年末にいくら残っていたら安心できる？",
+    placeholder: "例：150万円",
+  },
+  {
+    key: "priority_goal",
+    eyebrow: "Priority",
+    question: "どの目標を一番優先したい？",
+    placeholder: "例：韓国ワーホリ準備",
+  },
+  {
+    key: "monthly_target_amount",
+    eyebrow: "Monthly Step",
+    question: "月いくらなら無理なく動かせそう？",
+    placeholder: "例：3万円",
+  },
+];
+
+function renderMoneyFolder() {
+  const shell = document.createElement("section");
+  shell.className = "money-garden";
+
+  if (currentUser && !moneyOverviewState.loaded && !moneyOverviewState.loading) {
+    loadMoneyOverview().then(() => {
+      if (!folderWindow.hidden && folderTitle.textContent === "Money") renderFolder("money");
+    });
+  }
+
+  if (moneyOverviewState.loading) {
+    shell.innerHTML = `<p class="money-status">Money Gardenを読み込んでいます...</p>`;
+    return shell;
+  }
+
+  if (moneyOverviewState.error) {
+    shell.innerHTML = `
+      <section class="money-empty">
+        <span>Money Garden</span>
+        <h3>家計データを読み込めませんでした</h3>
+        <p>${safeGoalText(moneyOverviewState.error)}</p>
+      </section>
+    `;
+    return shell;
+  }
+
+  if (moneyOverviewState.setup || !isMoneyConfigured()) {
+    shell.append(renderMoneySetup());
+    return shell;
+  }
+
+  shell.append(renderMoneyOverview());
+  return shell;
+}
+
+function renderMoneySetup() {
+  moneyOverviewState.setup ??= { step: 0, answers: {} };
+  const setup = moneyOverviewState.setup;
+  const step = moneySetupQuestions[setup.step];
+  const card = document.createElement("section");
+  card.className = "money-setup";
+  card.innerHTML = `
+    <div class="money-setup-top">
+      <button type="button" data-money-action="cancel-setup">← Money Gardenへ</button>
+      <strong>${setup.step + 1} / ${moneySetupQuestions.length}</strong>
+    </div>
+    <div class="money-setup-progress">
+      ${moneySetupQuestions.map((_, index) => `<i class="${index <= setup.step ? "is-filled" : ""}"></i>`).join("")}
+    </div>
+    <article class="money-rabbit-card">
+      <img src="${RABBIT_HOME_ICONS[0]}" alt="Bloom Rabbit" />
+      <div>
+        <span>Bloom Rabbit</span>
+        <p>Money Gardenを少しだけ整えよう。</p>
+      </div>
+    </article>
+    <label class="money-question">
+      <span>${step.eyebrow}</span>
+      <strong>${step.question}</strong>
+      <textarea data-money-setup-input rows="4" placeholder="${step.placeholder}"></textarea>
+    </label>
+    <p class="money-setup-error" aria-live="polite"></p>
+    <div class="money-setup-actions">
+      <button type="button" data-money-action="previous-setup" ${setup.step === 0 ? "disabled" : ""}>戻る</button>
+      <button type="button" class="is-primary" data-money-action="next-setup">${setup.step === moneySetupQuestions.length - 1 ? "保存" : "次へ"}</button>
+    </div>
+  `;
+  card.querySelector("[data-money-setup-input]").value = setup.answers[step.key] ?? "";
+  return card;
+}
+
+function renderMoneyOverview() {
+  const overview = calculateMoneyOverview();
+  const view = document.createElement("section");
+  view.className = "money-overview money-strategy";
+  const gapLabel = overview.yearEndTarget ? (overview.gap <= 0 ? "目標まで達成圏内" : `あと${yen(overview.gap)}`) : "目標を設定中";
+  view.innerHTML = `
+    <section class="money-hero money-strategy-hero">
+      <span>Money Garden</span>
+      <div>
+        <h3>${safeGoalText(overview.settings.money_theme, "今年、どんな未来を育てる？")}</h3>
+        <strong>${moneyStatusIcon(overview.status)} ${overview.outlook}</strong>
+      </div>
+      <p>${safeGoalText(overview.reason)}</p>
+    </section>
+    <section class="money-stat-grid">
+      <article>
+        <span>年末残高予測</span>
+        <strong>${yen(overview.forecast)}</strong>
+      </article>
+      <article>
+        <span>特別費残高</span>
+        <strong>${yen(overview.currentSavings)}</strong>
+      </article>
+      <article>
+        <span>投資累計</span>
+        <strong>${yen(overview.investmentTotal)}</strong>
+      </article>
+      <article>
+        <span>返済残高</span>
+        <strong>${yen(overview.repaymentBalance)}</strong>
+      </article>
+      <article>
+        <span>月末残高</span>
+        <strong>${yen(overview.monthEndBalance)}</strong>
+      </article>
+    </section>
+    <section class="money-card money-reserve">
+      <div class="money-card-head">
+        <span>予備費</span>
+        <small>余ったお金が自動で育つ場所</small>
+      </div>
+      <div class="money-reserve-grid">
+        <article><span>目標残高</span><strong>${yen(overview.reserveTarget)}</strong></article>
+        <article><span>今月の余白</span><strong>${yen(overview.reserveFund)}</strong></article>
+      </div>
+      <p>${safeGoalText(overview.reserveAdvice)}</p>
+    </section>
+    <section class="money-card">
+      <div class="money-card-head">
+        <span>やりたいこと</span>
+        <small>追加すると未来予測へ反映</small>
+      </div>
+      <div class="money-want-list"></div>
+      <form class="money-want-form" data-money-want-form>
+        <input name="title" placeholder="例：韓国旅行" autocomplete="off" />
+        <input name="amount" placeholder="金額 例：120000" inputmode="numeric" />
+        <input name="deadline" placeholder="期限 例：10月" />
+        <select name="priority" aria-label="優先度">
+          <option value="1">Priority 1</option>
+          <option value="2">Priority 2</option>
+          <option value="3" selected>Priority 3</option>
+        </select>
+        <button type="button" data-money-action="add-want">追加</button>
+      </form>
+    </section>
+    <section class="money-card money-simulation">
+      <div class="money-card-head">
+        <span>Simulation</span>
+        <small>やりたいこと込み</small>
+      </div>
+      <div class="money-sim-grid">
+        <article><span>毎月必要積立</span><strong>${yen(Math.ceil(overview.requiredMonthlyForWants))}</strong></article>
+        <article><span>年末残高</span><strong>${yen(overview.forecast)}</strong><small>追加前 ${yen(overview.forecastBeforeWants)}</small></article>
+        <article><span>達成率</span><strong>${overview.wantsTotal ? Math.min(100, Math.round(((overview.currentSavings + overview.forecastBeforeWants) / Math.max(1, overview.wantsTotal + overview.yearEndTarget)) * 100)) : overview.progress}%</strong></article>
+      </div>
+    </section>
+    <section class="money-card">
+      <div class="money-card-head">
+        <span>年間ロードマップ</span>
+        <small>出費が集中する月を色で表示</small>
+      </div>
+      <div class="money-roadmap"></div>
+    </section>
+    <section class="money-card">
+      <div class="money-card-head">
+        <span>AI改善提案</span>
+        <small>実績から自動分析</small>
+      </div>
+      <ul class="money-suggestion-list"></ul>
+    </section>
+    <section class="money-card money-investment-card">
+      <div class="money-card-head">
+        <span>Life Investment</span>
+        <small>今年どんな人生へ投資したか</small>
+      </div>
+      <div class="money-investment-layout">
+        <div class="money-investment-chart" aria-label="Life Investment chart"></div>
+        <div class="money-investment-list"></div>
+      </div>
+    </section>
+    <section class="money-card money-bloom-garden">
+      <div class="money-card-head">
+        <span>Bloom Garden</span>
+        <small>人生に咲いた花</small>
+      </div>
+      <div class="money-flower-bed"></div>
+      <div class="money-feeling-log"></div>
+    </section>
+    <section class="money-card">
+      <div class="money-card-head">
+        <span>特別費</span>
+        <small>家計管理アプリの積立</small>
+      </div>
+      <div class="money-fund-list"></div>
+    </section>
+    <section class="money-card money-score">
+      <div class="money-card-head">
+        <span>家計スコア</span>
+        <small>100点満点</small>
+      </div>
+      <strong>${overview.score}</strong>
+      <div class="money-score-bar"><b style="width:${overview.score}%"></b></div>
+      <ul class="money-score-reasons"></ul>
+    </section>
+    <section class="money-card money-year-review">
+      <div class="money-card-head">
+        <span>Bloom Year Review</span>
+        <small>今年のお金で育てた人生</small>
+      </div>
+      <div class="money-review-grid">
+        <article><span>一番咲いた花</span><strong>${safeGoalText(overview.yearReview.topFlower.flower)}</strong><small>${safeGoalText(overview.yearReview.topFlower.label)}</small></article>
+        <article><span>幸せだった投資</span><strong>${safeGoalText(overview.yearReview.happiest.label)}</strong><small>${overview.yearReview.happiest.happiness}%</small></article>
+        <article><span>成長した分野</span><strong>${safeGoalText(overview.yearReview.growth.label)}</strong><small>${safeGoalText(overview.yearReview.growth.flower)}</small></article>
+        <article><span>今年の価値観</span><strong>${safeGoalText(overview.yearReview.values)}</strong></article>
+      </div>
+    </section>
+    <section class="money-card">
+      <div class="money-card-head">
+        <span>Next Actions</span>
+        <small>今月の小さな一歩</small>
+      </div>
+      <ul class="money-action-list"></ul>
+    </section>
+    <div class="money-button-row">
+      <button type="button" data-money-action="toggle-future">${moneyOverviewState.showFuture ? "未来を閉じる" : "未来を見る"}</button>
+      <button type="button" data-money-action="open-finance-app">家計管理アプリを開く</button>
+      <button type="button" data-money-action="edit-setup">設定を編集</button>
+    </div>
+  `;
+
+  const wantList = view.querySelector(".money-want-list");
+  if (overview.wants.length) {
+    overview.wants.forEach((want) => {
+      const percent = want.amount ? Math.min(100, Math.round((Number(want.saved || 0) / Number(want.amount || 1)) * 100)) : 0;
+      const item = document.createElement("article");
+      item.className = "money-goal-item money-want-item";
+      item.innerHTML = `
+        <div><strong>${safeGoalText(want.title)}</strong><span>${yen(want.amount)} / ${want.deadline || "期限未定"} / P${want.priority}</span></div>
+        <i><b style="width:${percent}%"></b></i>
+        <button type="button" data-money-action="delete-want" data-want-id="${safeGoalText(want.id)}">×</button>
+      `;
+      wantList.append(item);
+    });
+  } else {
+    wantList.innerHTML = `<p class="money-muted">韓国旅行、バッグ、ダンス衣装など「今年叶えたいこと」を追加すると、必要積立を自動で出します。</p>`;
+  }
+
+  const roadmap = view.querySelector(".money-roadmap");
+  overview.roadmap.forEach((month) => {
+    const item = document.createElement("article");
+    item.className = `money-roadmap-month is-${month.level}`;
+    item.innerHTML = `
+      <strong>${month.label}</strong>
+      <span>${yen(month.total)}</span>
+      <ul>${month.events.length ? month.events.map((event) => `<li>${safeGoalText(event.area)}：${safeGoalText(event.title)}</li>`).join("") : "<li>予定支出なし</li>"}</ul>
+    `;
+    roadmap.append(item);
+  });
+
+  const suggestionList = view.querySelector(".money-suggestion-list");
+  overview.suggestions.forEach((suggestion) => {
+    const item = document.createElement("li");
+    item.textContent = suggestion;
+    suggestionList.append(item);
+  });
+
+  const chart = view.querySelector(".money-investment-chart");
+  const chartStops = overview.lifeInvestments.filter((tag) => tag.amount > 0).slice(0, 8);
+  let cursor = 0;
+  chart.style.background = chartStops.length
+    ? `conic-gradient(${chartStops.map((tag) => {
+      const start = cursor;
+      cursor += Math.max(3, tag.percent);
+      return `${tag.tone} ${start}% ${Math.min(100, cursor)}%`;
+    }).join(", ")})`
+    : "conic-gradient(#e9e0fb 0 45%, #d9f2e8 45% 70%, #ffd8e8 70% 100%)";
+  const investmentList = view.querySelector(".money-investment-list");
+  overview.lifeInvestments.slice(0, 8).forEach((tag) => {
+    const item = document.createElement("article");
+    item.className = "money-investment-tag";
+    item.innerHTML = `
+      <i style="background:${tag.tone}"></i>
+      <div><strong>${safeGoalText(tag.label)}</strong><span>${safeGoalText(tag.flower)} / ${yen(tag.amount)} / 幸福度 ${tag.happiness}%</span></div>
+    `;
+    investmentList.append(item);
+  });
+
+  const flowerBed = view.querySelector(".money-flower-bed");
+  overview.lifeInvestments.filter((tag) => tag.amount > 0 || tag.count > 0).slice(0, 8).forEach((tag) => {
+    const flowers = Math.max(1, Math.min(5, Math.ceil((tag.happiness || tag.percent) / 22)));
+    const item = document.createElement("article");
+    item.className = "money-flower-patch";
+    item.style.setProperty("--flower-color", tag.tone);
+    item.innerHTML = `
+      <div>${Array.from({ length: flowers }, () => "<i></i>").join("")}</div>
+      <strong>${safeGoalText(tag.label)}</strong>
+      <span>${safeGoalText(tag.flower)}</span>
+    `;
+    flowerBed.append(item);
+  });
+
+  const feelingLog = view.querySelector(".money-feeling-log");
+  if (overview.recentReflectionTargets.length) {
+    overview.recentReflectionTargets.forEach((item) => {
+      const tag = lifeTagForMoney(item);
+      const row = document.createElement("article");
+      row.className = "money-feeling-row";
+      row.innerHTML = `
+        <div>
+          <span>${safeGoalText(tag.label)}</span>
+          <strong>${safeGoalText(item.title || item.category || "Spending")}</strong>
+          <small>${yen(item.amount)} / このお金の使い方、どう感じた？</small>
+        </div>
+        <div class="money-feeling-buttons">
+          <button type="button" data-money-action="feel-spending" data-spending-id="${safeGoalText(item.id)}" data-feeling="bud">つぼみ</button>
+          <button type="button" data-money-action="feel-spending" data-spending-id="${safeGoalText(item.id)}" data-feeling="grow">すくすく</button>
+          <button type="button" data-money-action="feel-spending" data-spending-id="${safeGoalText(item.id)}" data-feeling="bloom">満開</button>
+        </div>
+      `;
+      feelingLog.append(row);
+    });
+  } else {
+    feelingLog.innerHTML = `<p class="money-muted">最近の支出には気持ちログがついています。Bloom Gardenに花が増えていきます。</p>`;
+  }
+
+  const fundList = view.querySelector(".money-fund-list");
+  if (overview.specialFunds.length) {
+    overview.specialFunds.forEach((fund) => {
+      const item = document.createElement("article");
+      item.className = "money-fund-item";
+      item.innerHTML = `
+        <div><strong>${safeGoalText(fund.title)}</strong><span>${fund.percent}%</span></div>
+        <p>${yen(fund.current)} / ${fund.target ? yen(fund.target) : "目標未設定"} / 年末予測 ${yen(fund.forecast)}</p>
+        <i><b style="width:${fund.percent}%"></b></i>
+      `;
+      fundList.append(item);
+    });
+  } else {
+    fundList.innerHTML = `<p class="money-muted">家計管理アプリのごほうび貯金がここに表示されます。</p>`;
+  }
+
+  const scoreReasons = view.querySelector(".money-score-reasons");
+  overview.scoreReasons.forEach((reason) => {
+    const item = document.createElement("li");
+    item.textContent = reason;
+    scoreReasons.append(item);
+  });
+
+  const actionList = view.querySelector(".money-action-list");
+  overview.nextActions.forEach((action) => {
+    const item = document.createElement("li");
+    item.textContent = action;
+    actionList.append(item);
+  });
+
+  if (moneyOverviewState.showFuture) {
+    const future = document.createElement("section");
+    future.className = "money-future";
+    future.innerHTML = `<span>Future View</span><div></div>`;
+    const grid = future.querySelector("div");
+    overview.scenarios.forEach(([label, amount, monthlyAdjust]) => {
+      const item = document.createElement("article");
+      item.innerHTML = `<strong>${label}</strong><p>${yen(amount)}</p><small>月額調整 ${yen(monthlyAdjust)}</small>`;
+      grid.append(item);
+    });
+    view.append(future);
+  }
+
+  return view;
+}
+
+function handleMoneyAction(button) {
+  const action = button.dataset.moneyAction;
+
+  if (action === "toggle-future") {
+    moneyOverviewState.showFuture = !moneyOverviewState.showFuture;
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "open-finance-app") {
+    window.open("https://summary-xi.vercel.app/", "_blank", "noopener");
+    return;
+  }
+
+  if (action === "edit-setup") {
+    const settings = moneySettings();
+    moneyOverviewState.setup = {
+      step: 0,
+      answers: {
+        money_theme: settings.money_theme ?? "",
+        year_end_target: settings.year_end_target ? yen(settings.year_end_target) : "",
+        priority_goal: settings.goals?.[0]?.title ?? "",
+        monthly_target_amount: settings.monthly_target_amount ? yen(settings.monthly_target_amount) : "",
+      },
+    };
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "add-want") {
+    const form = button.closest("[data-money-want-form]");
+    const title = form?.elements.title?.value.trim() ?? "";
+    const amount = parseMoneyAmount(form?.elements.amount?.value ?? "");
+    const deadline = parseMoneyDate(form?.elements.deadline?.value ?? "");
+    const priority = Number(form?.elements.priority?.value || 3);
+    if (!title || !amount) {
+      addMessage("assistant", "やりたいことは、名前と金額だけ入れれば追加できます。");
+      return;
+    }
+    const settings = moneySettings();
+    settings.wants ??= [];
+    settings.wants.push({
+      id: `want-${Date.now()}`,
+      title,
+      amount,
+      deadline,
+      priority,
+      saved: 0,
+    });
+    updateMoneyGoalProgress();
+    saveGoalState();
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "delete-want") {
+    const settings = moneySettings();
+    settings.wants = getMoneyWants(settings).filter((want) => want.id !== button.dataset.wantId);
+    updateMoneyGoalProgress();
+    saveGoalState();
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "feel-spending") {
+    const settings = moneySettings();
+    settings.reflections ??= {};
+    settings.reflections[button.dataset.spendingId] = {
+      feeling: button.dataset.feeling,
+      recorded_at: new Date().toISOString(),
+    };
+    saveGoalState();
+    renderFolder("money");
+    addMessage("assistant", `気持ちログ「${moneyReflectionLabel(button.dataset.feeling)}」をBloom Gardenに保存したよ。`);
+    return;
+  }
+
+  if (action === "cancel-setup") {
+    moneyOverviewState.setup = isMoneyConfigured() ? null : { step: 0, answers: {} };
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "previous-setup") {
+    const input = button.closest(".money-setup")?.querySelector("[data-money-setup-input]");
+    const step = moneySetupQuestions[moneyOverviewState.setup.step];
+    if (input && step) moneyOverviewState.setup.answers[step.key] = input.value.trim();
+    moneyOverviewState.setup.step = Math.max(0, moneyOverviewState.setup.step - 1);
+    renderFolder("money");
+    return;
+  }
+
+  if (action === "next-setup") {
+    const card = button.closest(".money-setup");
+    const input = card?.querySelector("[data-money-setup-input]");
+    const step = moneySetupQuestions[moneyOverviewState.setup.step];
+    const value = input?.value.trim() ?? "";
+    if (!value) {
+      const error = card?.querySelector(".money-setup-error");
+      if (error) error.textContent = "ひとことだけ書いてみよう。";
+      input?.focus();
+      return;
+    }
+
+    moneyOverviewState.setup.answers[step.key] = value;
+    if (moneyOverviewState.setup.step < moneySetupQuestions.length - 1) {
+      moneyOverviewState.setup.step += 1;
+      renderFolder("money");
+      return;
+    }
+
+    const state = loadGoalState();
+    const category = state.categories.find((item) => item.id === "money");
+    const answers = moneyOverviewState.setup.answers;
+    const target = parseMoneyAmount(answers.year_end_target);
+    const monthly = parseMoneyAmount(answers.monthly_target_amount);
+    const overview = calculateMoneyOverview();
+    const existingMoney = category.money ?? {};
+    category.money = {
+      ...existingMoney,
+      money_theme: answers.money_theme,
+      year_end_target: target,
+      monthly_target_amount: monthly,
+      goals: [{
+        title: answers.priority_goal,
+        target_amount: target,
+        current_amount: overview.currentSavings,
+        priority: 1,
+      }],
+      next_action: monthly ? `今月${yen(monthly)}を積み立てる` : "家計管理アプリで積立額を確認する",
+    };
+    category.woop.wish = answers.money_theme;
+    category.woop.plans = [category.money.next_action];
+    category.nextAction = category.money.next_action;
+    category.reward = answers.priority_goal;
+    updateMoneyGoalProgress();
+    saveGoalState();
+    moneyOverviewState.setup = null;
+    renderFolder("money");
+    addMessage("assistant", "Money Gardenの見通しを保存したよ。");
+  }
+}
+
 function renderFolder(key) {
   const data = folderData[key];
   folderTitle.textContent = data.title;
@@ -1058,6 +1961,8 @@ function renderFolder(key) {
 
   if (data.custom === "goals") {
     folderContent.append(renderGoalsFolder());
+  } else if (data.custom === "money") {
+    folderContent.append(renderMoneyFolder());
   } else if (data.custom === "calendar") {
     const board = document.createElement("div");
     board.className = "calendar-board";
@@ -1145,7 +2050,7 @@ function renderFolder(key) {
 
     const board = document.createElement("div");
     board.className = "vision-board";
-    ["ダンスを続ける 43%", "旅の計画 25%", "心地よい部屋 58%", "ごほうび旅行 65%"].forEach((item) => {
+    ["繝繝ｳ繧ｹ繧堤ｶ壹￠繧・43%", "譌・・險育判 25%", "蠢・慍繧医＞驛ｨ螻・58%", "縺斐⊇縺・・譌・｡・65%"].forEach((item) => {
       const tile = document.createElement("div");
       tile.className = "vision-tile";
       tile.textContent = item;
@@ -1181,253 +2086,7 @@ function renderIdealDayList(container, lines) {
 
 function renderGoalsFolder() {
   return renderGoalsFolderV3();
-
-  const state = loadGoalState();
-  const active = activeGoalCategory();
-  const mapStage = getLifeMapStage(state);
-  const mapBackground = getLifeMapBackground(state);
-  const shell = document.createElement("section");
-  shell.className = "goals-workspace";
-  shell.innerHTML = `
-    <section class="goal-theme-card">
-      <span>2026 Theme</span>
-      <textarea class="goal-theme-input" data-goal-field="yearTheme" rows="2"></textarea>
-      <p>Bloom Rabbit asks: 今年、一番叶えたいことは？</p>
-    </section>
-    <section class="life-map" data-stage="${mapStage}">
-      <div class="life-map-board">
-        <img class="life-map-background" src="${mapBackground}" alt="" />
-        <img class="life-map-complete-effect" src="${lifeMapAssets.sparkles}" alt="" />
-        <div class="life-map-center" data-status="seed">
-          <small>Bloom Tree</small>
-          <strong></strong>
-          <p>${getLifeMapRabbitMessage(state)}</p>
-        </div>
-        <div class="life-map-categories"></div>
-      </div>
-    </section>
-    <section class="goal-overview">
-      <article>
-        <span>Progress</span>
-        <strong>${averageGoalProgress(state.categories)}%</strong>
-      </article>
-      <article>
-        <span>Recent Wins</span>
-        <p></p>
-      </article>
-      <article>
-        <span>Bloom Note</span>
-        <p>方向を決める日と、実行する日は分けて大丈夫。</p>
-      </article>
-    </section>
-    <section class="goal-card goal-ideal-planner">
-      <div class="goal-card-head">
-        <div>
-          <span>Ideal Day</span>
-          <h3>1日の設計</h3>
-        </div>
-      </div>
-      <div class="ideal-day-list"></div>
-      <label class="goal-soft-editor">Edit Ideal Day<textarea data-goal-field="idealDayGlobal" rows="5"></textarea></label>
-    </section>
-    <section class="goal-detail"></section>
-  `;
-
-  shell.querySelector(".goal-theme-input").value = state.yearTheme;
-  shell.querySelector(".life-map-center strong").textContent = `「${state.yearTheme}」`;
-  shell.querySelector(".goal-overview p").textContent = state.recentWins.join(" / ");
-  shell.querySelector('[data-goal-field="idealDayGlobal"]').value = state.idealDay.join("\n");
-  renderIdealDayList(shell.querySelector(".goal-ideal-planner .ideal-day-list"), state.idealDay);
-
-  const categoryList = shell.querySelector(".life-map-categories");
-  state.categories.forEach((category) => {
-    const status = category.status ?? "hidden";
-    const unlocked = !["hidden", "locked"].includes(status);
-    const button = document.createElement("button");
-    button.className = `life-category life-area-${category.id} life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""} ${category.id === state.lastUnlockedCategoryId ? "is-unlocking" : ""}`;
-    button.type = "button";
-    button.dataset.goalAction = unlocked ? "select-category" : "preview-category";
-    button.dataset.categoryId = category.id;
-    button.dataset.status = status;
-    button.dataset.mapStage = category.mapStage ?? status;
-    button.setAttribute("aria-label", unlocked ? `${category.label}を開く` : `${category.label}エリアを解放する`);
-    button.innerHTML = `
-      <span class="life-category-icon">${category.icon}</span>
-      <strong>${category.label}</strong>
-      <small>${unlocked ? category.title : "未発見エリア"}</small>
-      <div class="life-area-scene" aria-hidden="true">
-        <span class="life-area-path"></span>
-        <span class="life-area-building"></span>
-        <span class="life-area-sprout"></span>
-        <span class="life-area-sparkle">✦</span>
-      </div>
-      <img class="life-map-lock" src="${lifeMapAssets.locked}" alt="" />
-      <img class="life-map-cloud" src="${getLifeMapCloud(status)}" alt="" />
-      <img class="life-map-unlock-sparkle" src="${lifeMapAssets.sparkles}" alt="" />
-    `;
-    categoryList.append(button);
-  });
-
-  if (active) {
-    shell.querySelector(".goal-detail").append(renderGoalDetail(active));
-  } else {
-    shell.querySelector(".goal-detail").innerHTML = `
-      <article class="goal-card goal-empty-map">
-        <span>Rabbit</span>
-        <h3>最初のエリアを作る</h3>
-        <p class="rabbit-comment">雲の下に、まだ見えていない場所があるよ。育てたいエリアをひとつ選んでみよう。</p>
-      </article>
-    `;
-  }
-  return shell;
 }
-
-function renderGoalDetail(category) {
-  const detail = document.createElement("div");
-  const compactGoals = window.matchMedia?.("(max-width: 429px)").matches ?? false;
-  const desktopOpen = compactGoals ? "" : "open";
-  detail.className = "goal-detail-grid";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-card goal-card-main">
-      <div class="goal-card-head">
-        <div>
-          <span>${category.icon} ${category.label}</span>
-          <h3>${category.title}</h3>
-        </div>
-        <div class="goal-stars" aria-label="Importance">${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</div>
-      </div>
-      <p class="rabbit-comment">${getGoalComment(category)}</p>
-      <div class="goal-progress"><i style="width: ${calculateGoalProgress(category)}%"></i></div>
-      <div class="goal-card-meta">
-        <span>Progress: ${calculateGoalProgress(category)}% / ${category.progressSource === "plan-checks" ? "Plan checks" : category.progressSource}</span>
-        <span>Matrix: ${category.matrix}</span>
-        <span>Next: ${category.nextAction}</span>
-      </div>
-    </article>
-    <article class="goal-card goal-guide">
-      <span>Rabbit Guide</span>
-      <h3>この順番で考えると整いやすいよ</h3>
-      <div class="goal-step-list">
-        <div><b>1</b><span>Wishに「叶えたいこと」を書く</span></div>
-        <div><b>2</b><span>Outcomeに「叶った後の景色」を書く</span></div>
-        <div><b>3</b><span>Obstacleに「つまずきそうなこと」を置く</span></div>
-        <div><b>4</b><span>Planに「小さなAction」を1行ずつ書く</span></div>
-      </div>
-      <p>${getGoalQuestion(category)}</p>
-    </article>
-    <details class="goal-card goal-woop" open>
-      <summary><span><b>WOOP</b><small>願いを小さなPlanに分ける中心ノート</small></span></summary>
-      <label>Wish<span class="field-hint">叶えたいことを一文で</span><textarea data-goal-field="wish" rows="2"></textarea></label>
-      <label>Outcome<span class="field-hint">叶ったらどんな気持ち・状態になる？</span><textarea data-goal-field="outcome" rows="2"></textarea></label>
-      <label>Obstacle<span class="field-hint">邪魔になりそうなこと、つまずきそうなこと</span><textarea data-goal-field="obstacle" rows="2"></textarea></label>
-      <label>Plan<span class="field-hint">今日や今週できる小さなActionを1行ずつ</span><textarea data-goal-field="plans" rows="4"></textarea></label>
-      <div class="goal-plan-checks"></div>
-    </details>
-    <details class="goal-card goal-map-editor" ${desktopOpen}>
-      <summary><span><b>Map Details</b><small>地図に表示する名前・次の一歩・ごほうび</small></span></summary>
-      <label>Map Label<span class="field-hint">Life Map上の短い名前</span><input data-goal-field="label" type="text" value="" /></label>
-      <label>Goal Title<span class="field-hint">このカテゴリで目指す状態</span><input data-goal-field="title" type="text" value="" /></label>
-      <label>Next Action<span class="field-hint">Planから自動反映されます。必要なら手直しできます。</span><input data-goal-field="nextAction" type="text" value="" /></label>
-      <label>Reward<span class="field-hint">叶えたら自分にあげたいもの</span><input data-goal-field="reward" type="text" value="" /></label>
-      <label>Vision Link<span class="field-hint">関連するVisionシート名</span><input data-goal-field="vision" type="text" value="" /></label>
-      <details class="goal-advanced-settings">
-        <summary><span><b>Advanced Settings</b><small>進捗の測り方と分類</small></span></summary>
-        <div class="goal-editor-grid">
-          <label>Progress Source<select data-goal-field="progressSource"></select></label>
-          <label>Importance<input data-goal-field="importance" type="number" min="1" max="5" value="" /></label>
-        </div>
-        <label>Matrix<input data-goal-field="matrix" type="text" value="" /></label>
-      </details>
-    </details>
-    <details class="goal-card goal-mandala" ${desktopOpen}>
-      <summary><span><b>Mandala</b><small>アイデアを広げたい時だけ使う</small></span></summary>
-      <div class="goal-card-head">
-        <button type="button" data-goal-action="toggle-mandala">マンダラチャートを開く</button>
-      </div>
-      <div class="mandala-grid" hidden></div>
-    </details>
-    <details class="goal-card goal-vision-link" ${desktopOpen}>
-      <summary><span><b>Vision</b><small>理想の景色を見返す</small></span></summary>
-      <p>${category.vision}</p>
-      <button type="button" data-folder="vision" data-goal-action="open-vision">Visionを開く</button>
-    </details>
-    <details class="goal-card goal-reward" ${desktopOpen}>
-      <summary><span><b>Reward</b><small>叶えた先のごほうび</small></span></summary>
-      <p>${category.reward}</p>
-      <small>Moneyのごほうび貯金と連携予定</small>
-    </details>
-  `;
-
-  detail.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
-  detail.querySelector('[data-goal-field="outcome"]').value = category.woop.outcome;
-  detail.querySelector('[data-goal-field="obstacle"]').value = category.woop.obstacle;
-  detail.querySelector('[data-goal-field="plans"]').value = category.woop.plans.join("\n");
-  detail.querySelector('[data-goal-field="label"]').value = category.label;
-  detail.querySelector('[data-goal-field="title"]').value = category.title;
-  detail.querySelector('[data-goal-field="importance"]').value = category.importance;
-  detail.querySelector('[data-goal-field="matrix"]').value = category.matrix;
-  detail.querySelector('[data-goal-field="nextAction"]').value = category.nextAction;
-  detail.querySelector('[data-goal-field="vision"]').value = category.vision;
-  detail.querySelector('[data-goal-field="reward"]').value = category.reward;
-  const progressSource = detail.querySelector('[data-goal-field="progressSource"]');
-  goalProgressSourceOptions.forEach(([value, label]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    option.selected = value === category.progressSource;
-    progressSource.append(option);
-  });
-
-  const planChecks = detail.querySelector(".goal-plan-checks");
-  renderGoalPlanChecks(planChecks, category);
-
-  const mandalaGrid = detail.querySelector(".mandala-grid");
-  category.mandala.forEach((cell, index) => {
-    const box = document.createElement("textarea");
-    box.dataset.goalField = "mandala";
-    box.dataset.index = String(index);
-    box.rows = 2;
-    box.value = cell;
-    mandalaGrid.append(box);
-  });
-
-  const timeline = detail.querySelector(".ideal-day-list");
-  if (timeline) {
-  category.idealDay.forEach((item) => {
-    const row = document.createElement("p");
-    const [time, ...rest] = item.split(" ");
-    row.innerHTML = "<time></time><span></span>";
-    row.querySelector("time").textContent = /^\d/.test(time) ? time : "—";
-    row.querySelector("span").textContent = /^\d/.test(time) ? rest.join(" ") : item;
-    timeline.append(row);
-  });
-  }
-
-  return detail;
-}
-
-function renderGoalPlanChecks(container, category) {
-  if (!container) return;
-  container.innerHTML = "";
-  const plans = splitGoalLines(category.woop.plans);
-  if (!plans.length) {
-    const empty = document.createElement("p");
-    empty.className = "goal-plan-empty";
-    empty.textContent = "Planを1行ずつ入力すると、ここに小さなActionチェックが並びます。";
-    container.append(empty);
-    return;
-  }
-
-  plans.forEach((plan, index) => {
-    const label = document.createElement("label");
-    label.innerHTML = `<input data-goal-field="completedPlan" data-index="${index}" type="checkbox" /> <span></span>`;
-    label.querySelector("input").checked = Boolean(category.completedPlans?.[index]);
-    label.querySelector("span").textContent = plan;
-    container.append(label);
-  });
-}
-
 function renderLifeMapBoard(state, { mode = "home" } = {}) {
   const active = activeGoalCategory();
   const mapStage = getLifeMapStage(state);
@@ -1490,10 +2149,10 @@ function renderHomeLifeMap() {
 }
 
 const goalWizardSteps = [
-  { key: "wish", eyebrow: "Step 1 · Wish", rabbit: "まずは願いを書こう！", question: "今年、一番叶えたいことは？", placeholder: "例：韓国に近づく働き方をつくる" },
-  { key: "outcome", eyebrow: "Step 2 · Outcome", rabbit: "叶ったあとの景色を見てみよう。", question: "叶ったら、どんな毎日になっている？", placeholder: "例：安心しながら、新しい挑戦を楽しんでいる" },
-  { key: "obstacle", eyebrow: "Step 3 · Obstacle", rabbit: "先につまずきを知っておけば大丈夫。", question: "途中で止まりそうなのは、どんな時？", placeholder: "例：情報が多すぎて、選べなくなる時" },
-  { key: "plans", eyebrow: "Step 4 · Plan", rabbit: "最後に、小さな一歩を置こう！", question: "今日か今週、何から始める？", placeholder: "例：求人条件を1件調べる" },
+  { key: "wish", eyebrow: "Step 1 / Wish", rabbit: "まずは願いを書こう。", question: "今年、一番叶えたいことは？", placeholder: "例：韓国に近づく働き方を作る" },
+  { key: "outcome", eyebrow: "Step 2 / Outcome", rabbit: "叶ったあとの景色を見てみよう。", question: "叶ったら、どんな毎日になっている？", placeholder: "例：安心しながら、新しい挑戦を楽しんでいる" },
+  { key: "obstacle", eyebrow: "Step 3 / Obstacle", rabbit: "先につまずきを知っておけば大丈夫。", question: "途中で止まりそうなのは、どんな時？", placeholder: "例：情報が多すぎて、選べなくなる時" },
+  { key: "plans", eyebrow: "Step 4 / Plan", rabbit: "最後に、小さな一歩を置こう。", question: "今日か今週、何から始める？", placeholder: "例：求人条件を1件調べる" },
 ];
 
 function safeGoalText(value, fallback = "") {
@@ -1519,570 +2178,17 @@ function renderGoalAreaCard(category, active) {
     <span class="goal-world-icon">${category.icon}</span>
     <span class="goal-world-copy">
       <strong>${category.label}</strong>
-      <small>Lv.${getGoalLevel(category)} · 完成率 ${progress}%</small>
-      <span class="goal-world-next">${safeGoalText(category.nextAction, "最初の一歩を決める")}</span>
+      <small>Lv.${getGoalLevel(category)} ﾂｷ 螳梧・邇・${progress}%</small>
+      <span class="goal-world-next">${safeGoalText(category.nextAction, "譛蛻昴・荳豁ｩ繧呈ｱｺ繧√ｋ")}</span>
     </span>
-    <span class="goal-world-enter">▶ 入る</span>
+    <span class="goal-world-enter">笆ｶ 蜈･繧・/span>
   `;
   return button;
 }
 
 function renderGoalsFolderV2() {
-  const state = loadGoalState();
-  const active = activeGoalCategory();
-  const shell = document.createElement("section");
-  shell.className = "goals-workspace goals-world";
-  shell.innerHTML = `
-    <section class="goal-world-theme">
-      <span>Theme · 2026</span>
-      <strong>${safeGoalText(state.yearTheme)}</strong>
-    </section>
-    <section class="goal-world-map-slot"></section>
-    <section class="goal-rabbit-chat">
-      <img src="${RABBIT_HOME_ICONS[0]}" alt="Bloom Rabbit" />
-      <div>
-        <span>Bloom Rabbit</span>
-        <p>${active ? `${active.label}を少し育ててみる？` : "今年は、どんな世界を育てたい？"}</p>
-      </div>
-    </section>
-    <section class="goal-world-areas">
-      <div class="goal-section-title">
-        <span>Grow an area</span>
-        <h3>育てるエリア</h3>
-      </div>
-      <div class="goal-world-area-grid"></div>
-    </section>
-    <section class="goal-detail"></section>
-  `;
-
-  shell.querySelector(".goal-world-map-slot").append(renderLifeMapBoard(state, { mode: "goals" }));
-
-  const categoryList = shell.querySelector(".goal-world-area-grid");
-  state.categories.forEach((category) => {
-    categoryList.append(renderGoalAreaCard(category, active));
-  });
-
-  const detail = shell.querySelector(".goal-detail");
-  if (active) {
-    detail.append(renderGoalDetailV2(active));
-  } else {
-    detail.innerHTML = `
-      <article class="goal-card goal-empty-map">
-        <span>Choose an area</span>
-        <h3>マップから、気になる場所へ</h3>
-        <p class="rabbit-comment">全部を決めなくて大丈夫。今いちばん気になるエリアを、ひとつだけ選んでみよう。</p>
-      </article>
-    `;
-  }
-
-  return shell;
+  return renderGoalsFolderV3();
 }
-
-function renderGoalDetailV2(category) {
-  return renderGoalExperience(category);
-
-  const detail = document.createElement("div");
-  detail.className = "goal-detail-grid goal-detail-simple";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-card goal-card-main">
-      <div class="goal-card-head">
-        <div>
-          <span>${category.icon} ${category.label}</span>
-          <h3>${category.title}</h3>
-        </div>
-        <div class="goal-stars" aria-label="Importance">${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</div>
-      </div>
-      <p class="rabbit-comment">${getGoalComment(category)}</p>
-      <div class="goal-progress"><i style="width: ${calculateGoalProgress(category)}%"></i></div>
-      <div class="goal-card-meta">
-        <span>Progress: ${calculateGoalProgress(category)}%</span>
-        <span>Next: ${category.nextAction}</span>
-      </div>
-      <div class="goal-editor-grid">
-        <label>Area Name<input data-goal-field="title" type="text" value="" /></label>
-        <label>Next Action<input data-goal-field="nextAction" type="text" value="" /></label>
-      </div>
-    </article>
-    <details class="goal-card goal-woop" open>
-      <summary><span><b>Goal Design</b><small>願いを小さなPlanに分ける</small></span></summary>
-      <label>Wish<span class="field-hint">叶えたいことを一文で</span><textarea data-goal-field="wish" rows="2"></textarea></label>
-      <label>Outcome<span class="field-hint">叶った後に見たい景色・気持ち</span><textarea data-goal-field="outcome" rows="2"></textarea></label>
-      <label>Obstacle<span class="field-hint">つまずきそうなこと、迷いそうなこと</span><textarea data-goal-field="obstacle" rows="2"></textarea></label>
-      <label>Plan<span class="field-hint">今日か今週できる小さなActionを1行ずつ</span><textarea data-goal-field="plans" rows="4"></textarea></label>
-      <div class="goal-plan-checks"></div>
-    </details>
-    <details class="goal-card goal-progress-settings">
-      <summary><span><b>Progress</b><small>Planの完了で進捗が育ちます</small></span></summary>
-      <div class="goal-editor-grid">
-        <label>Progress Source<select data-goal-field="progressSource"></select></label>
-        <label>Importance<input data-goal-field="importance" type="number" min="1" max="5" value="" /></label>
-      </div>
-      <label>Reward<input data-goal-field="reward" type="text" value="" /></label>
-      <label>Vision Link<input data-goal-field="vision" type="text" value="" /></label>
-      <label>Matrix<input data-goal-field="matrix" type="text" value="" /></label>
-    </details>
-    <details class="goal-card goal-mandala">
-      <summary><span><b>Mandala</b><small>アイデアを広げたい時だけ使う</small></span></summary>
-      <div class="goal-card-head">
-        <button type="button" data-goal-action="toggle-mandala">マンダラチャートを開く</button>
-      </div>
-      <div class="mandala-grid" hidden></div>
-    </details>
-  `;
-
-  detail.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
-  detail.querySelector('[data-goal-field="outcome"]').value = category.woop.outcome;
-  detail.querySelector('[data-goal-field="obstacle"]').value = category.woop.obstacle;
-  detail.querySelector('[data-goal-field="plans"]').value = category.woop.plans.join("\n");
-  detail.querySelector('[data-goal-field="title"]').value = category.title;
-  detail.querySelector('[data-goal-field="importance"]').value = category.importance;
-  detail.querySelector('[data-goal-field="matrix"]').value = category.matrix;
-  detail.querySelector('[data-goal-field="nextAction"]').value = category.nextAction;
-  detail.querySelector('[data-goal-field="vision"]').value = category.vision;
-  detail.querySelector('[data-goal-field="reward"]').value = category.reward;
-
-  const progressSource = detail.querySelector('[data-goal-field="progressSource"]');
-  goalProgressSourceOptions.forEach(([value, label]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    option.selected = value === category.progressSource;
-    progressSource.append(option);
-  });
-
-  renderGoalPlanChecks(detail.querySelector(".goal-plan-checks"), category);
-
-  const mandalaGrid = detail.querySelector(".mandala-grid");
-  category.mandala.forEach((cell, index) => {
-    const box = document.createElement("textarea");
-    box.dataset.goalField = "mandala";
-    box.dataset.index = String(index);
-    box.rows = 2;
-    box.value = cell;
-    mandalaGrid.append(box);
-  });
-
-  return detail;
-}
-
-function renderGoalExperience(category) {
-  if (goalMandalaCategoryId === category.id) return renderGoalMandalaScreen(category);
-  if (goalWizardState?.categoryId === category.id) return renderGoalWizard(category);
-
-  const detail = document.createElement("div");
-  const progress = calculateGoalProgress(category);
-  const summaryItems = [
-    ["Wish", category.woop.wish, "まだ願いは書かれていません"],
-    ["Outcome", category.woop.outcome, "叶った景色を考えてみよう"],
-    ["Obstacle", category.woop.obstacle, "つまずきそうな場面を考えてみよう"],
-    ["Plan", category.woop.plans[0], "最初の一歩を決めよう"],
-  ];
-  detail.className = "goal-detail-grid goal-area-view";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-area-hero life-category-${category.tone}">
-      <div class="goal-area-hero-top">
-        <span class="goal-area-building">${category.icon}</span>
-        <div>
-          <span>現在のエリア</span>
-          <h2>${category.label}</h2>
-          <p>${safeGoalText(category.title)}</p>
-        </div>
-        <strong>Lv.${getGoalLevel(category)}</strong>
-      </div>
-      <div class="goal-area-rating" aria-label="大切さ ${category.importance} / 5">${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</div>
-      <p class="goal-area-wish">「${safeGoalText(category.woop.wish, `${category.label}で育てたいことを見つけよう`)}」</p>
-      <div class="goal-progress"><i style="width: ${progress}%"></i></div>
-      <div class="goal-area-next">
-        <span>次の一歩</span>
-        <strong>${safeGoalText(category.nextAction, "最初の一歩を決める")}</strong>
-      </div>
-      <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">▶ このエリアを育てる</button>
-      <div class="goal-area-extras">
-        ${category.reward ? `<span>Reward · ${safeGoalText(category.reward)}</span>` : ""}
-        ${category.vision ? `<span>Vision · ${safeGoalText(category.vision)}</span>` : ""}
-      </div>
-    </article>
-    <section class="goal-summary-grid"></section>
-    <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${category.id}">
-      <span>✨ もっとアイデアを広げたい？</span>
-      <strong>マンダラチャートを開く →</strong>
-    </button>
-  `;
-
-  const summaryGrid = detail.querySelector(".goal-summary-grid");
-  summaryItems.forEach(([label, value, fallback]) => {
-    const card = document.createElement("article");
-    card.className = `goal-summary-card ${value ? "has-value" : ""}`;
-    card.innerHTML = `<span>${label}</span><p>${safeGoalText(value, fallback)}</p>`;
-    summaryGrid.append(card);
-  });
-
-  return detail;
-}
-
-function renderGoalWizard(category) {
-  const wizard = goalWizardState;
-  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
-  const step = goalWizardSteps[stepIndex];
-  const detail = document.createElement("div");
-  detail.className = "goal-detail-grid goal-wizard";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-wizard-card">
-      <div class="goal-wizard-top">
-        <button type="button" data-goal-action="cancel-goal-wizard">← マップへ</button>
-        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
-      </div>
-      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
-      <div class="goal-wizard-rabbit">
-        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
-        <div><span>Bloom Rabbit</span><p>${step.rabbit}</p></div>
-      </div>
-      <div class="goal-wizard-question">
-        <span>${step.eyebrow}</span>
-        <h2>${step.question}</h2>
-        <textarea data-goal-wizard-input rows="4" placeholder="${step.placeholder}"></textarea>
-        <p class="goal-wizard-error" aria-live="polite"></p>
-      </div>
-      <div class="goal-wizard-actions">
-        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
-        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? "マップを育てる ✨" : "次へ"}</button>
-      </div>
-    </article>
-  `;
-  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
-  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
-  return detail;
-}
-
-function renderGoalMandalaScreen(category) {
-  const detail = document.createElement("div");
-  detail.className = "goal-detail-grid goal-mandala-screen";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-card goal-mandala" open>
-      <div class="goal-mandala-screen-head">
-        <button type="button" data-goal-action="close-mandala">← ${category.label}へ</button>
-        <div><span>Mandala</span><h3>アイデアを広げる</h3></div>
-      </div>
-      <div class="mandala-grid"></div>
-    </article>
-  `;
-  const mandalaGrid = detail.querySelector(".mandala-grid");
-  category.mandala.forEach((cell, index) => {
-    const box = document.createElement("textarea");
-    box.dataset.goalField = "mandala";
-    box.dataset.index = String(index);
-    box.rows = 2;
-    box.value = cell;
-    mandalaGrid.append(box);
-  });
-  return detail;
-}
-
-function getGoalPrimaryPlan(category) {
-  const plans = splitGoalLines(category.woop?.plans ?? []);
-  const openPlan = plans.find((_, index) => !category.completedPlans?.[index]);
-  return openPlan || category.nextAction || "最初の一歩を決める";
-}
-
-function getGoalShortWish(category) {
-  return category.woop?.wish || category.title || `${category.label}を少しずつ育てる`;
-}
-
-function getGoalVillageName(category) {
-  return {
-    career: "Career Village",
-    money: "Money Garden",
-    health: "Health Cottage",
-    life: "Joy Park",
-    growth: "Growth Library",
-  }[category.id] || `${category.label} Village`;
-}
-
-function getGoalStageCopy(category) {
-  const progress = calculateGoalProgress(category);
-  if (progress >= 100) return "村が完成しました";
-  if (progress >= 90) return "住人と光が集まっています";
-  if (progress >= 60) return "噴水やベンチが増えました";
-  if (progress >= 30) return "花と看板が見えてきました";
-  if (category.woop?.wish || splitGoalLines(category.woop?.plans ?? []).length) return "小さなお家が建ちました";
-  return "まだ小さな土地です";
-}
-
-function getGoalMandalaSeeds(category) {
-  const seeds = {
-    career: ["韓国で働く", "会社", "働き方", "スキル", "英語", "韓国語", "生活", "お金", "価値観"],
-    money: ["安心して暮らす", "収入", "支出", "予算", "貯金", "ごほうび", "固定費", "イベント", "資産"],
-    health: ["整った体づくり", "睡眠", "食事", "運動", "美容", "休息", "通院", "メンタル", "習慣"],
-    life: ["好きで満たす", "友達", "家族", "趣味", "ダンス", "旅", "写真", "時間", "思い出"],
-    growth: ["内側を育てる", "読書", "学習", "英語", "記録", "振り返り", "相談", "休む力", "自信"],
-  };
-  return seeds[category.id] ?? ["Theme", category.label, "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review"];
-}
-
-function ensureGoalMandalaSeeds(category) {
-  const current = Array.isArray(category.mandala) ? category.mandala : [];
-  const genericWords = new Set(["Theme", "Vision", "Action", "Reward", "Care", "Habit", "Money", "Review", category.label]);
-  const looksGeneric = current.length < 9 || current.filter((item) => item && !genericWords.has(item)).length <= 2;
-  if (looksGeneric) category.mandala = getGoalMandalaSeeds(category);
-}
-
-function renderGoalStatusCards(category) {
-  const cards = document.createElement("section");
-  cards.className = "goal-status-cards";
-  const rows = [
-    ["Wish", category.woop?.wish, "叶えたいことはまだ空っぽ"],
-    ["Outcome", category.woop?.outcome, "叶った後の景色を置く"],
-    ["Obstacle", category.woop?.obstacle, "つまずきそうなことを置く"],
-    ["Plan", splitGoalLines(category.woop?.plans ?? []).join(" / "), "小さなActionを置く"],
-  ];
-  rows.forEach(([label, value, fallback], index) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = `goal-design-card ${value ? "has-value" : ""}`;
-    card.dataset.goalAction = "start-goal-wizard";
-    card.dataset.categoryId = category.id;
-    card.dataset.step = String(index);
-    card.innerHTML = `<span>${label}</span><p>${safeGoalText(value, fallback)}</p>`;
-    cards.append(card);
-  });
-  return cards;
-}
-
-function renderGoalCurrentArea(category) {
-  const progress = calculateGoalProgress(category);
-  const area = document.createElement("section");
-  area.className = `goal-current-area life-category-${category.tone}`;
-  area.dataset.categoryId = category.id;
-  area.innerHTML = `
-    <div class="goal-current-head">
-      <div class="goal-current-building" aria-hidden="true">${category.icon}</div>
-      <div>
-        <span>Current Area</span>
-        <h3>${safeGoalText(category.label)}</h3>
-        <p>${safeGoalText(category.title)}</p>
-      </div>
-      <strong>Lv.${getGoalLevel(category)}</strong>
-    </div>
-    <p class="goal-current-wish">「${safeGoalText(getGoalShortWish(category))}」</p>
-    <div class="goal-current-progress">
-      <span>完成率 ${progress}%</span>
-      <i><b style="width:${progress}%"></b></i>
-    </div>
-    <dl class="goal-current-meta">
-      <div><dt>Stars</dt><dd>${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</dd></div>
-      <div><dt>Next</dt><dd>${safeGoalText(getGoalPrimaryPlan(category))}</dd></div>
-      <div><dt>Reward</dt><dd>${safeGoalText(category.reward, "まだ未設定")}</dd></div>
-      <div><dt>Vision</dt><dd>${safeGoalText(category.vision, "Dream Sheet")}</dd></div>
-    </dl>
-    <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">▶ このエリアを育てる</button>
-  `;
-  return area;
-}
-
-function renderGoalAreaStrip(state, active) {
-  const strip = document.createElement("section");
-  strip.className = "goal-area-strip";
-  state.categories.forEach((category) => {
-    const progress = calculateGoalProgress(category);
-    const unlocked = !["hidden", "locked"].includes(category.status ?? "hidden");
-    const tile = document.createElement("button");
-    tile.type = "button";
-    tile.className = `goal-area-tile life-category-${category.tone} ${category.id === active?.id ? "is-active" : ""}`;
-    tile.dataset.goalAction = unlocked ? "select-category" : "preview-category";
-    tile.dataset.categoryId = category.id;
-    tile.innerHTML = `
-      <span class="goal-area-tile-icon">${category.icon}</span>
-      <strong>${safeGoalText(category.label)}</strong>
-      <small>Lv.${getGoalLevel(category)} / ${progress}%</small>
-    `;
-    strip.append(tile);
-  });
-  return strip;
-}
-
-function renderGoalVillageOverview(category) {
-  const progress = calculateGoalProgress(category);
-  const decoration = getLifeMapDecoration(category.status ?? "seed");
-  const area = document.createElement("section");
-  area.className = `goal-current-area goal-village-overview life-category-${category.tone}`;
-  area.dataset.categoryId = category.id;
-  area.innerHTML = `
-    <div class="goal-current-head">
-      <div class="goal-current-building" aria-hidden="true">${decoration ? `<img src="${decoration}" alt="" />` : category.icon}</div>
-      <div>
-        <span>Area Overview</span>
-        <h3>${safeGoalText(getGoalVillageName(category))}</h3>
-        <p>${safeGoalText(category.title)}</p>
-      </div>
-      <strong>Lv.${getGoalLevel(category)}</strong>
-    </div>
-    <p class="goal-village-stage">${safeGoalText(getGoalStageCopy(category))}</p>
-    <section class="goal-overview-block">
-      <span>現在の目標</span>
-      <strong>${safeGoalText(category.woop?.wish, "まだ目標は決まっていません")}</strong>
-    </section>
-    <section class="goal-overview-block">
-      <span>次のAction</span>
-      <strong>${safeGoalText(getGoalPrimaryPlan(category))}</strong>
-    </section>
-    <div class="goal-current-progress">
-      <span>進行率 ${progress}%</span>
-      <i><b style="width:${progress}%"></b></i>
-    </div>
-    <dl class="goal-current-meta">
-      <div><dt>Stars</dt><dd>${"★".repeat(category.importance)}${"☆".repeat(5 - category.importance)}</dd></div>
-      <div><dt>Stage</dt><dd>${safeGoalText(category.status ?? "seed")}</dd></div>
-      <div><dt>Reward</dt><dd>${safeGoalText(category.reward, "まだ未設定")}</dd></div>
-      <div><dt>Vision</dt><dd>${safeGoalText(category.vision, "Dream Sheet")}</dd></div>
-    </dl>
-    <div class="goal-overview-actions">
-      <button class="goal-grow-button" type="button" data-goal-action="start-goal-wizard" data-category-id="${category.id}">育てる</button>
-      <button type="button" data-goal-action="edit-woop" data-category-id="${category.id}">編集</button>
-      <button type="button" data-goal-action="open-mandala" data-category-id="${category.id}">Mandala</button>
-    </div>
-  `;
-  return area;
-}
-
-function renderGoalHiddenEditor(category) {
-  const editor = document.createElement("section");
-  editor.className = "goal-hidden-editor goal-detail-grid";
-  editor.dataset.categoryId = category.id;
-  editor.innerHTML = `
-    <article class="goal-card goal-woop" open>
-      <div class="goal-editor-head">
-        <div>
-          <span>WOOP Editor</span>
-          <h3>必要な時だけ細かく編集</h3>
-        </div>
-        <button type="button" data-goal-action="close-woop">閉じる</button>
-      </div>
-      <label>Wish<textarea data-goal-field="wish" rows="2"></textarea></label>
-      <label>Outcome<textarea data-goal-field="outcome" rows="2"></textarea></label>
-      <label>Obstacle<textarea data-goal-field="obstacle" rows="2"></textarea></label>
-      <label>Plan<textarea data-goal-field="plans" rows="4"></textarea></label>
-      <div class="goal-plan-checks"></div>
-    </article>
-  `;
-  editor.querySelector('[data-goal-field="wish"]').value = category.woop.wish;
-  editor.querySelector('[data-goal-field="outcome"]').value = category.woop.outcome;
-  editor.querySelector('[data-goal-field="obstacle"]').value = category.woop.obstacle;
-  editor.querySelector('[data-goal-field="plans"]').value = category.woop.plans.join("\n");
-  renderGoalPlanChecks(editor.querySelector(".goal-plan-checks"), category);
-  return editor;
-}
-
-function renderGoalWizardV3(category) {
-  const wizard = goalWizardState;
-  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
-  const step = goalWizardSteps[stepIndex];
-  const detail = document.createElement("div");
-  detail.className = "goal-detail-grid goal-wizard goal-wizard-game";
-  detail.dataset.categoryId = category.id;
-  const prompts = [
-    ["Step 1 · Wish", "まずは願いを書こう。まだふわっとしていて大丈夫だよ。", "今年、一番叶えたいことは？", "例：韓国に近づく働き方をつくる"],
-    ["Step 2 · Outcome", "叶った後の景色を見てみよう。毎日の感じを言葉にしてね。", "叶ったら、どんな毎日になっている？", "例：安心しながら、新しい挑戦を楽しんでいる"],
-    ["Step 3 · Obstacle", "先につまずきを知っておけば、やさしく進めるよ。", "途中で止まりそうなのは、どんな時？", "例：情報が多すぎて、選べなくなる時"],
-    ["Step 4 · Plan", "最後に、小さな一歩を置こう。1行に1つずつでOK。", "今日か今週、何から始める？", "例：求人条件を1件調べる\n必要な貯金額をMoneyに入れる"],
-  ];
-  const [eyebrow, rabbit, question, placeholder] = prompts[stepIndex];
-  detail.innerHTML = `
-    <article class="goal-wizard-card">
-      <div class="goal-wizard-top">
-        <button type="button" data-goal-action="cancel-goal-wizard">← エリアへ戻る</button>
-        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
-      </div>
-      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
-      <div class="goal-wizard-rabbit">
-        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
-        <div><span>Bloom Rabbit</span><p>${rabbit}</p></div>
-      </div>
-      <div class="goal-wizard-question">
-        <span>${eyebrow}</span>
-        <h2>${question}</h2>
-        <textarea data-goal-wizard-input rows="4" placeholder="${placeholder}"></textarea>
-        <p class="goal-wizard-error" aria-live="polite"></p>
-      </div>
-      <div class="goal-wizard-actions">
-        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
-        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? "マップを育てる ✨" : "次へ"}</button>
-      </div>
-    </article>
-  `;
-  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
-  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
-  return detail;
-}
-
-function renderGoalRabbitConversation(category) {
-  const wizard = goalWizardState;
-  const stepIndex = Math.max(0, Math.min(goalWizardSteps.length - 1, wizard?.step ?? 0));
-  const step = goalWizardSteps[stepIndex];
-  const prompts = [
-    {
-      eyebrow: "Welcome",
-      rabbit: `${getGoalVillageName(category)}へようこそ。今日は少しだけ、この村を育てよう。`,
-      question: "今年、ここで一番叶えたいことは？",
-      placeholder: "例：韓国で働ける仕事を見つける",
-    },
-    {
-      eyebrow: "Future",
-      rabbit: "いいね。それが叶った後の毎日を、少しだけ想像してみよう。",
-      question: "叶ったら、どんな毎日になる？",
-      placeholder: "例：安心して挑戦できて、好きな場所で働けている",
-    },
-    {
-      eyebrow: "Cloud",
-      rabbit: "途中で曇りそうな場所も、先に見つけておけば大丈夫。",
-      question: "邪魔になりそうなことは？",
-      placeholder: "例：情報が多すぎて、何から見ればいいか迷う",
-    },
-    {
-      eyebrow: "Small Action",
-      rabbit: "じゃあ今日できることを、一つだけ置こう。小さくていいよ。",
-      question: "今日か今週、何をひとつ進める？",
-      placeholder: "例：求人条件を1件調べる",
-    },
-  ];
-  const prompt = prompts[stepIndex];
-  const detail = document.createElement("div");
-  detail.className = "goal-detail-grid goal-wizard goal-rabbit-conversation";
-  detail.dataset.categoryId = category.id;
-  detail.innerHTML = `
-    <article class="goal-conversation-card">
-      <div class="goal-wizard-top">
-        <button type="button" data-goal-action="cancel-goal-wizard">← 村へ戻る</button>
-        <span>${stepIndex + 1} / ${goalWizardSteps.length}</span>
-      </div>
-      <div class="goal-wizard-progress" aria-hidden="true">${goalWizardSteps.map((_, index) => `<i class="${index <= stepIndex ? "is-filled" : ""}"></i>`).join("")}</div>
-      <div class="goal-conversation-scene">
-        <img src="${RABBIT_HOME_ICONS[Math.min(stepIndex, RABBIT_HOME_ICONS.length - 1)]}" alt="Bloom Rabbit" />
-        <div>
-          <span>Bloom Rabbit</span>
-          <p>${prompt.rabbit}</p>
-        </div>
-      </div>
-      <div class="goal-conversation-question">
-        <span>${prompt.eyebrow}</span>
-        <h2>${prompt.question}</h2>
-        <textarea data-goal-wizard-input rows="4" placeholder="${prompt.placeholder}"></textarea>
-        <p class="goal-wizard-error" aria-live="polite"></p>
-      </div>
-      <div class="goal-wizard-actions">
-        ${stepIndex ? '<button type="button" data-goal-action="previous-goal-wizard">戻る</button>' : ""}
-        <button class="is-primary" type="button" data-goal-action="next-goal-wizard">${stepIndex === goalWizardSteps.length - 1 ? `${getGoalVillageName(category)}を育てる ✨` : "次へ"}</button>
-      </div>
-    </article>
-  `;
-  const storedValue = step.key === "plans" ? (wizard?.drafts.plans ?? []).join("\n") : wizard?.drafts[step.key] ?? "";
-  detail.querySelector("[data-goal-wizard-input]").value = storedValue;
-  return detail;
-}
-
 function renderGoalsFolderV3() {
   const state = loadGoalState();
   const active = activeGoalCategory();
@@ -2097,7 +2203,7 @@ function renderGoalsFolderV3() {
     <section class="goal-game-areas">
       <div class="goal-section-title">
         <span>Areas</span>
-        <h3>育てるエリア</h3>
+        <h3>閧ｲ縺ｦ繧九お繝ｪ繧｢</h3>
       </div>
     </section>
     <section class="goal-game-current"></section>
@@ -2111,8 +2217,8 @@ function renderGoalsFolderV3() {
     current.innerHTML = `
       <article class="goal-current-empty">
         <span>Choose an area</span>
-        <h3>まずは育てたいエリアを1つ選ぼう</h3>
-        <p>全部を一度に決めなくて大丈夫。マップを眺めて、今いちばん気になる場所から始めます。</p>
+        <h3>縺ｾ縺壹・閧ｲ縺ｦ縺溘＞繧ｨ繝ｪ繧｢繧・縺､驕ｸ縺ｼ縺・/h3>
+        <p>蜈ｨ驛ｨ繧剃ｸ蠎ｦ縺ｫ豎ｺ繧√↑縺上※螟ｧ荳亥､ｫ縲ゅ・繝・・繧堤惻繧√※縲∽ｻ翫＞縺｡縺ｰ繧捺ｰ励↓縺ｪ繧句ｴ謇縺九ｉ蟋九ａ縺ｾ縺吶・/p>
       </article>
     `;
     return shell;
@@ -2135,8 +2241,8 @@ function renderGoalsFolderV3() {
   if (goalWoopEditCategoryId === active.id) detail.append(renderGoalHiddenEditor(active));
   detail.insertAdjacentHTML("beforeend", `
     <button class="goal-mandala-teaser" type="button" data-goal-action="open-mandala" data-category-id="${active.id}">
-      <span>✨ もっとアイデアを広げたい？</span>
-      <strong>マンダラチャートを開く →</strong>
+      <span>笨ｨ 繧ゅ▲縺ｨ繧｢繧､繝・い繧貞ｺ・￡縺溘＞・・/span>
+      <strong>繝槭Φ繝繝ｩ繝√Ε繝ｼ繝医ｒ髢九￥ 竊・/strong>
     </button>
   `);
   current.append(detail);
@@ -2227,9 +2333,9 @@ async function handleCalendarAction(button) {
       const timeInput = editor.querySelector(".calendar-editor-time");
       const kindInput = editor.querySelector(".calendar-editor-kind");
 
-      await updateCalendarEvent({
-        userId: currentUser.id,
-        eventId,
+        await updateCalendarEvent({
+          userId: currentUser.id,
+          eventId,
         title: titleInput.value.trim() || "予定",
         dateValue: dateInput.value,
         time: timeInput.value || "",
@@ -2242,7 +2348,7 @@ async function handleCalendarAction(button) {
 
     renderFolder("calendar");
   } catch (error) {
-    addMessage("assistant", `Calendarを更新できませんでした: ${error.message}`);
+    addMessage("assistant", `Calendar繧呈峩譁ｰ縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   } finally {
     button.disabled = false;
   }
@@ -2253,7 +2359,7 @@ function renderVisionFolder() {
   shell.className = "vision-workspace";
 
   if (!visionState.loaded && currentUser) {
-    shell.innerHTML = `<p class="vision-status">Visionを読み込んでいます...</p>`;
+    shell.innerHTML = `<p class="vision-status">Vision繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺・..</p>`;
     loadVisionBoards(currentUser.id).then(() => {
       if (!folderWindow.hidden && folderTitle.textContent === "Vision") renderFolder("vision");
     });
@@ -2420,7 +2526,7 @@ async function addVisionItem(type, content, displayUrl = "") {
     board.items.push({ ...created, display_url: displayUrl });
     renderFolder("vision");
   } catch (error) {
-    addMessage("assistant", `Visionに追加できませんでした: ${error.message}`);
+    addMessage("assistant", `Vision縺ｫ霑ｽ蜉縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   }
 }
 
@@ -2430,11 +2536,11 @@ async function handleVisionAction(button) {
   if (!workspace || !currentUser) return;
 
   if (action === "add-text") {
-    await addVisionItem("text", "小さな夢メモ");
+    await addVisionItem("text", "蟆上＆縺ｪ螟｢繝｡繝｢");
   }
 
   if (action === "add-sticky") {
-    await addVisionItem("sticky", "付箋メモ");
+    await addVisionItem("sticky", "莉倡ｮ九Γ繝｢");
   }
 
   if (action === "add-image") {
@@ -2450,7 +2556,7 @@ async function handleVisionAction(button) {
       visionState.activeBoardId = board.id;
       renderFolder("vision");
     } catch (error) {
-      addMessage("assistant", `Visionシートを作成できませんでした: ${error.message}`);
+      addMessage("assistant", `Vision繧ｷ繝ｼ繝医ｒ菴懈・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
     }
   }
 
@@ -2466,7 +2572,7 @@ async function handleVisionAction(button) {
       await updateVisionBoard({ userId: currentUser.id, board });
       renderFolder("vision");
     } catch (error) {
-      addMessage("assistant", `Vision背景を保存できませんでした: ${error.message}`);
+      addMessage("assistant", `Vision閭梧勹繧剃ｿ晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
     }
   }
 
@@ -2482,7 +2588,7 @@ async function handleVisionAction(button) {
       await updateVisionItem({ userId: currentUser.id, item });
       renderFolder("vision");
     } catch (error) {
-      addMessage("assistant", `付箋の色を保存できませんでした: ${error.message}`);
+      addMessage("assistant", `莉倡ｮ九・濶ｲ繧剃ｿ晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
     }
   }
 
@@ -2538,11 +2644,11 @@ async function saveVisionItemContent(contentElement) {
   const item = board?.items.find((entry) => entry.id === itemId);
   if (!item || !currentUser) return;
 
-  item.content = contentElement.textContent.trim() || (item.type === "sticky" ? "付箋メモ" : "小さな夢メモ");
+  item.content = contentElement.textContent.trim() || (item.type === "sticky" ? "莉倡ｮ九Γ繝｢" : "蟆上＆縺ｪ螟｢繝｡繝｢");
   try {
     await updateVisionItem({ userId: currentUser.id, item });
   } catch (error) {
-    addMessage("assistant", `Visionメモを保存できませんでした: ${error.message}`);
+    addMessage("assistant", `Vision繝｡繝｢繧剃ｿ晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   }
 }
 
@@ -2621,7 +2727,7 @@ async function endVisionDrag() {
   try {
     await updateVisionItem({ userId: currentUser.id, item });
   } catch (error) {
-    addMessage("assistant", `Visionの位置を保存できませんでした: ${error.message}`);
+    addMessage("assistant", `Vision縺ｮ菴咲ｽｮ繧剃ｿ晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   }
 }
 
@@ -2654,7 +2760,7 @@ function handleGoalAction(button) {
         saveGoalState({ sync: false });
       }
     }, 1100);
-    addMessage("assistant", "新しいエリアが見えてきたよ");
+    addMessage("assistant", "新しいエリアが見えてきたよ。");
     return;
   }
 
@@ -2785,7 +2891,7 @@ function handleGoalAction(button) {
     goalWizardState = null;
     saveGoalState();
     renderFolder("goals");
-    addMessage("assistant", state.mapTransition ? "世界が少し育ったよ" : `${getGoalVillageName(category)}が少し育ったよ`);
+    addMessage("assistant", state.mapTransition ? "世界が少し育ったよ。" : `${getGoalVillageName(category)}が少し育ったよ。`);
     if (state.mapTransition) {
       window.setTimeout(() => {
         const latest = loadGoalState();
@@ -2830,7 +2936,7 @@ function saveGoalField(field) {
   const state = loadGoalState();
 
   if (field.dataset.goalField === "yearTheme") {
-    state.yearTheme = field.value.trim() || "自由に、しなやかに育つ";
+    state.yearTheme = field.value.trim() || "閾ｪ逕ｱ縺ｫ縲√＠縺ｪ繧・°縺ｫ閧ｲ縺､";
     saveGoalState();
     if (!folderWindow.hidden && folderTitle.textContent === "Goals") renderFolder("goals");
     return;
@@ -2859,7 +2965,7 @@ function saveGoalField(field) {
       .map((item) => item.trim())
       .filter(Boolean);
     category.completedPlans = category.woop.plans.map((_, index) => Boolean(category.completedPlans?.[index]));
-    category.nextAction = category.woop.plans[0] ?? "最初の一歩を決める";
+    category.nextAction = category.woop.plans[0] ?? "譛蛻昴・荳豁ｩ繧呈ｱｺ繧√ｋ";
     refreshGoalMapStage(category);
     renderGoalPlanChecks(field.closest(".goal-woop")?.querySelector(".goal-plan-checks"), category);
   }
@@ -2900,7 +3006,7 @@ function saveGoalField(field) {
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  setAuthMessage("ログインしています...");
+  setAuthMessage("繝ｭ繧ｰ繧､繝ｳ縺励※縺・∪縺・..");
 
   try {
     const user = await signInWithEmail({
@@ -3036,6 +3142,12 @@ folderContent.addEventListener("click", (event) => {
     return;
   }
 
+  const moneyButton = event.target.closest("[data-money-action]");
+  if (moneyButton) {
+    handleMoneyAction(moneyButton);
+    return;
+  }
+
   const visionButton = event.target.closest("[data-vision-action]");
   if (visionButton) {
     handleVisionAction(visionButton);
@@ -3105,7 +3217,7 @@ missionsWidget?.addEventListener("change", async (event) => {
     await loadTaskMissions(currentUser.id);
   } catch (error) {
     checkbox.checked = !checkbox.checked;
-    addMessage("assistant", `Taskを更新できませんでした: ${error.message}`);
+    addMessage("assistant", `Task繧呈峩譁ｰ縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆: ${error.message}`);
   } finally {
     checkbox.disabled = false;
   }
