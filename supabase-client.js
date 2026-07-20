@@ -81,6 +81,37 @@ export async function getTodayTasks({ userId, limit = 6 }) {
     .slice(0, limit);
 }
 
+export async function getMoneyOverviewData({ userId }) {
+  const today = new Date();
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+  const yearEnd = new Date(today.getFullYear(), 11, 31);
+
+  const [{ data: transactions, error: transactionError }, { data: rewardGoals, error: rewardError }] = await Promise.all([
+    supabase
+      .from("finance_transactions")
+      .select("id,title,amount,kind,category,scheduled_on,paid_on,reward_saving_goal_id,source_app,created_at")
+      .eq("user_id", userId)
+      .or(`paid_on.gte.${localDateKey(yearStart)},scheduled_on.gte.${localDateKey(yearStart)}`),
+    supabase
+      .from("reward_saving_goals")
+      .select("id,title,target_amount,current_amount,target_date,source_app,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(6),
+  ]);
+
+  if (transactionError) throw transactionError;
+  if (rewardError) throw rewardError;
+
+  return {
+    transactions: transactions ?? [],
+    rewardGoals: rewardGoals ?? [],
+    today: localDateKey(today),
+    yearStart: localDateKey(yearStart),
+    yearEnd: localDateKey(yearEnd),
+  };
+}
+
 export async function updateTaskStatus({ userId, taskId, done }) {
   const { data, error } = await supabase
     .from("tasks")
